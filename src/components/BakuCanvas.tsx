@@ -1,15 +1,10 @@
 /**
  * BakuCanvas – D-2型バクの描画コンポーネント
- * @shopify/react-native-skia 1.5.3
+ * react-native-svg 版（Expo Go 対応）
  */
-import React, { useMemo } from 'react';
-import { View } from 'react-native';
-import {
-  Canvas,
-  Path,
-  Skia,
-  Group,
-} from '@shopify/react-native-skia';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { View, Animated } from 'react-native';
+import Svg, { Polygon, Polyline, Line, G } from 'react-native-svg';
 
 // ----------------------------------------------------------------
 // Types
@@ -33,24 +28,16 @@ export type DreamFragment = {
 
 type Pt = [number, number];
 
-function poly(pts: Pt[], close = true): string {
-  let d = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 1; i < pts.length; i++) d += ` L ${pts[i][0]} ${pts[i][1]}`;
-  if (close) d += ' Z';
-  return d;
+function pts(arr: Pt[]): string {
+  return arr.map(([x, y]) => `${x},${y}`).join(' ');
 }
 
-function scalePts(pts: Pt[], sx: number, sy: number): Pt[] {
-  return pts.map(([x, y]) => [x * sx, y * sy]);
+function scalePts(arr: Pt[], sx: number, sy: number): Pt[] {
+  return arr.map(([x, y]) => [x * sx, y * sy]);
 }
 
-function offPts(pts: Pt[], dx: number, dy: number): Pt[] {
-  return pts.map(([x, y]) => [x + dx, y + dy]);
-}
-
-function makePath(pts: Pt[], close = true) {
-  const p = Skia.Path.MakeFromSVGString(poly(pts, close));
-  return p ?? Skia.Path.Make();
+function offPts(arr: Pt[], dx: number, dy: number): Pt[] {
+  return arr.map(([x, y]) => [x + dx, y + dy]);
 }
 
 // ----------------------------------------------------------------
@@ -106,7 +93,7 @@ function buildConfig(type: number): Config {
     earPts: [[...EAR]],
     showEye: true,
     snoutPts: [...SNOUT],
-    legs: LEGS.map(l => ({ ...l, hoof: [...l.hoof] as [Pt,Pt,Pt] })),
+    legs: LEGS.map(l => ({ ...l, hoof: [...l.hoof] as [Pt, Pt, Pt] })),
     legSW: 2,
     tailPts: [[...TAIL]],
     tailOffY: 0,
@@ -122,34 +109,44 @@ function buildConfig(type: number): Config {
   };
 
   switch (type) {
-    case 2: c.bodyPts = scalePts(BODY, 1, 1.3); c.legs = LEGS.map(l => ({ base: [l.base[0], l.base[1]*1.3] as Pt, tip: [l.tip[0], l.tip[1]*1.3] as Pt, hoof: l.hoof.map(([x,y]) => [x, y*1.3]) as [Pt,Pt,Pt] })); break;
+    case 2:
+      c.bodyPts = scalePts(BODY, 1, 1.3);
+      c.legs = LEGS.map(l => ({
+        base: [l.base[0], l.base[1] * 1.3] as Pt,
+        tip: [l.tip[0], l.tip[1] * 1.3] as Pt,
+        hoof: l.hoof.map(([x, y]) => [x, y * 1.3]) as [Pt, Pt, Pt],
+      }));
+      break;
     case 3: c.bodyPts = scalePts(BODY, 1.3, 1); break;
     case 4:
       c.legs = [
         ...LEGS,
-        { base: [18, 40] as Pt, tip: [18, 66] as Pt, hoof: [[18, 66], [24, 78], [12, 76]] as [Pt,Pt,Pt] },
-        { base: [56, 28] as Pt, tip: [64, 52] as Pt, hoof: [[64, 52], [70, 62], [58, 64]] as [Pt,Pt,Pt] },
+        { base: [18, 40] as Pt, tip: [18, 66] as Pt, hoof: [[18, 66], [24, 78], [12, 76]] as [Pt, Pt, Pt] },
+        { base: [56, 28] as Pt, tip: [64, 52] as Pt, hoof: [[64, 52], [70, 62], [58, 64]] as [Pt, Pt, Pt] },
       ];
       break;
     case 5:
       c.tailPts = [
-        [[-55,8],[-72,0],[-76,12],[-62,18]],
-        [[-76,12],[-93,4],[-97,16],[-83,22]],
-        [[-97,16],[-114,8],[-118,20],[-104,26]],
+        [[-55, 8], [-72, 0], [-76, 12], [-62, 18]],
+        [[-76, 12], [-93, 4], [-97, 16], [-83, 22]],
+        [[-97, 16], [-114, 8], [-118, 20], [-104, 26]],
       ];
       break;
     case 6: c.showEye = false; break;
     case 7:
       c.earPts = [
         [...EAR],
-        [[38,-52],[44,-80],[36,-64]],
-        [[40,-60],[50,-82],[54,-66]],
+        [[38, -52], [44, -80], [36, -64]],
+        [[40, -60], [50, -82], [54, -66]],
       ];
       break;
     case 8:
       c.legs = LEGS.map(l => ({
         base: l.base,
-        tip: [l.base[0] + (l.tip[0]-l.base[0])*0.6, l.base[1] + (l.tip[1]-l.base[1])*0.6] as Pt,
+        tip: [
+          l.base[0] + (l.tip[0] - l.base[0]) * 0.6,
+          l.base[1] + (l.tip[1] - l.base[1]) * 0.6,
+        ] as Pt,
         hoof: l.hoof,
       }));
       c.legSW = 4;
@@ -165,7 +162,7 @@ function buildConfig(type: number): Config {
     case 17: c.largeHooves = true; break;
     case 18:
       c.diamondBody = true;
-      c.bodyPts = [[0,-50],[60,0],[0,50],[-60,0]];
+      c.bodyPts = [[0, -50], [60, 0], [0, 50], [-60, 0]];
       break;
     case 19: c.secondHead = true; break;
     case 20: c.rotate = -12; break;
@@ -174,7 +171,7 @@ function buildConfig(type: number): Config {
 }
 
 // ----------------------------------------------------------------
-// Animated Baku using Reanimated + Skia
+// BakuCanvas component
 // ----------------------------------------------------------------
 
 type Props = {
@@ -183,150 +180,165 @@ type Props = {
   fragments?: DreamFragment[];
 };
 
+const STROKE = '#2A2A2A';
+const SW = 1.8;
+
 export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Props) {
   const cfg = useMemo(() => buildConfig(bakuType), [bakuType]);
   const cx = size / 2;
-  const cy = size / 2 + 20;
+  const cy = size / 2 + 10;
 
-  const STROKE = '#2A2A2A';
-  const SW = 1.8;
+  // Breathing animation
+  const breathe = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, { toValue: 1.015, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breathe, { toValue: 0.985, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
-  // --- Static paths (no animation on shape, transform instead) ---
+  const headPts = offPts(cfg.headPts, 0, cfg.headOffY);
+  const earPtsList = cfg.earPts.map(ep => offPts(ep, 0, cfg.headOffY));
+  const eyePts = offPts(EYE, 0, cfg.headOffY);
+  const snoutPts = offPts(cfg.snoutPts, 0, cfg.headOffY);
+  const tailPtsList = cfg.tailPts.map(tp => offPts(tp, 0, cfg.tailOffY));
 
-  const bodyPath = useMemo(() => makePath(cfg.bodyPts), [cfg.bodyPts]);
-  const headPath = useMemo(() => makePath(offPts(cfg.headPts, 0, cfg.headOffY)), [cfg.headPts, cfg.headOffY]);
-  const earPaths = useMemo(() => cfg.earPts.map(pts => makePath(offPts(pts, 0, cfg.headOffY))), [cfg.earPts, cfg.headOffY]);
-  const eyePath  = useMemo(() => makePath(offPts(EYE, 0, cfg.headOffY)), [cfg.headOffY]);
-  const snoutPath = useMemo(() => makePath(offPts(cfg.snoutPts, 0, cfg.headOffY)), [cfg.snoutPts, cfg.headOffY]);
-  const tailPaths = useMemo(() => cfg.tailPts.map(pts => makePath(offPts(pts, 0, cfg.tailOffY))), [cfg.tailPts, cfg.tailOffY]);
+  // Global transform string
+  const transforms: string[] = [`translate(${cx}, ${cy})`];
+  if (cfg.globalScale !== 1) transforms.push(`scale(${cfg.globalScale})`);
+  if (cfg.flipX) transforms.push('scale(-1, 1)');
+  if (cfg.rotate !== 0) transforms.push(`rotate(${cfg.rotate})`);
+  const transform = transforms.join(' ');
 
-  const legPaths = useMemo(() => cfg.legs.map(leg => {
-    const p = Skia.Path.Make();
-    p.moveTo(leg.base[0], leg.base[1]);
-    p.lineTo(leg.tip[0], leg.tip[1]);
-    const h = leg.hoof;
-    if (cfg.largeHooves) {
-      const hcx = (h[0][0]+h[1][0]+h[2][0])/3;
-      const hcy = (h[0][1]+h[1][1]+h[2][1])/3;
-      const s = 1.8;
-      p.moveTo(hcx+(h[0][0]-hcx)*s, hcy+(h[0][1]-hcy)*s);
-      p.lineTo(hcx+(h[1][0]-hcx)*s, hcy+(h[1][1]-hcy)*s);
-      p.lineTo(hcx+(h[2][0]-hcx)*s, hcy+(h[2][1]-hcy)*s);
-    } else {
-      p.moveTo(h[0][0], h[0][1]);
-      p.lineTo(h[1][0], h[1][1]);
-      p.lineTo(h[2][0], h[2][1]);
-    }
-    p.close();
-    return p;
-  }), [cfg.legs, cfg.largeHooves]);
+  // Back spike points
+  const spikePts: [number, number, number][] = [[-30, -16, 14], [-10, -24, 14], [10, -20, 14]];
 
-  const doubleBodyPath = useMemo(() => cfg.doubleBody ? makePath(offPts(cfg.bodyPts, 4, 4)) : null, [cfg.doubleBody, cfg.bodyPts]);
-
-  const innerLinePath = useMemo(() => {
-    if (!cfg.innerLines) return null;
-    const pts = cfg.bodyPts;
-    const p = Skia.Path.Make();
-    p.moveTo(pts[0][0], pts[0][1]); p.lineTo(pts[2][0], pts[2][1]);
-    p.moveTo(pts[1][0], pts[1][1]); p.lineTo(pts[3][0], pts[3][1]);
-    return p;
-  }, [cfg.innerLines, cfg.bodyPts]);
-
-  const spikePathSet = useMemo(() => {
-    if (!cfg.backSpikes) return [];
-    return [[-30,-16],[-10,-24],[10,-20]].map(([bx,by]) => {
-      const p = Skia.Path.Make();
-      p.moveTo(bx-6, by); p.lineTo(bx, by-14); p.lineTo(bx+6, by); p.close();
-      return p;
-    });
-  }, [cfg.backSpikes]);
-
-  const secondHeadPath = useMemo(() => cfg.secondHead ? makePath([[-20,-30],[2,-42],[6,-60],[-18,-54]]) : null, [cfg.secondHead]);
-
-  const fragmentPaths = useMemo(() => fragments.map(frag => {
-    const p = Skia.Path.Make();
-    const s = frag.size / 2;
-    p.moveTo(frag.x, frag.y - s);
-    p.lineTo(frag.x + s, frag.y);
-    p.lineTo(frag.x, frag.y + s);
-    p.lineTo(frag.x - s, frag.y);
-    p.close();
-    return { path: p, frag };
-  }), [fragments]);
-
-  const groupTransform = useMemo(() => {
-    const t: any[] = [{ translateX: cx }, { translateY: cy }];
-    if (cfg.flipX) t.push({ scaleX: -1 });
-    if (cfg.rotate !== 0) t.push({ rotate: (cfg.rotate * Math.PI) / 180 });
-    if (cfg.globalScale !== 1) t.push({ scale: cfg.globalScale });
-    return t;
-  }, [cx, cy, cfg.flipX, cfg.rotate, cfg.globalScale]);
+  // Hoof scaling helper
+  function hoofPts(hoof: [Pt, Pt, Pt]): Pt[] {
+    if (!cfg.largeHooves) return hoof;
+    const hcx = (hoof[0][0] + hoof[1][0] + hoof[2][0]) / 3;
+    const hcy = (hoof[0][1] + hoof[1][1] + hoof[2][1]) / 3;
+    return hoof.map(([x, y]) => [hcx + (x - hcx) * 1.8, hcy + (y - hcy) * 1.8]) as Pt[];
+  }
 
   return (
     <View style={{ width: size, height: size }}>
-      <Canvas style={{ flex: 1 }}>
-        <Group transform={groupTransform}>
-          {/* Double outline */}
-          {doubleBodyPath && (
-            <Path path={doubleBodyPath} style="stroke" strokeWidth={SW} color={STROKE} opacity={0.3} />
+      <Svg width={size} height={size}>
+        <G transform={transform}>
+          {/* Double body outline */}
+          {cfg.doubleBody && (
+            <Polygon
+              points={pts(offPts(cfg.bodyPts, 4, 4))}
+              fill="none"
+              stroke={STROKE}
+              strokeWidth={SW}
+              opacity={0.3}
+            />
           )}
 
           {/* Body */}
-          <Path path={bodyPath} style="stroke" strokeWidth={SW} color={STROKE} />
+          <Polygon points={pts(cfg.bodyPts)} fill="none" stroke={STROKE} strokeWidth={SW} />
 
           {/* Inner lines */}
-          {innerLinePath && (
-            <Path path={innerLinePath} style="stroke" strokeWidth={1} color={STROKE} opacity={0.2} />
+          {cfg.innerLines && cfg.bodyPts.length >= 4 && (
+            <>
+              <Line
+                x1={cfg.bodyPts[0][0]} y1={cfg.bodyPts[0][1]}
+                x2={cfg.bodyPts[2][0]} y2={cfg.bodyPts[2][1]}
+                stroke={STROKE} strokeWidth={1} opacity={0.2}
+              />
+              <Line
+                x1={cfg.bodyPts[1][0]} y1={cfg.bodyPts[1][1]}
+                x2={cfg.bodyPts[3][0]} y2={cfg.bodyPts[3][1]}
+                stroke={STROKE} strokeWidth={1} opacity={0.2}
+              />
+            </>
           )}
 
           {/* Back spikes */}
-          {spikePathSet.map((sp, i) => (
-            <Path key={`spike-${i}`} path={sp} style="stroke" strokeWidth={1.2} color={STROKE} />
+          {cfg.backSpikes && spikePts.map(([bx, by, h], i) => (
+            <Polygon
+              key={`spike-${i}`}
+              points={`${bx - 6},${by} ${bx},${by - h} ${bx + 6},${by}`}
+              fill="none"
+              stroke={STROKE}
+              strokeWidth={1.2}
+            />
           ))}
 
           {/* Tail */}
-          {tailPaths.map((tp, i) => (
-            <Path key={`tail-${i}`} path={tp} style="stroke" strokeWidth={SW} color={STROKE} />
+          {tailPtsList.map((tp, i) => (
+            <Polygon key={`tail-${i}`} points={pts(tp)} fill="none" stroke={STROKE} strokeWidth={SW} />
           ))}
 
           {/* Legs */}
-          {legPaths.map((lp, i) => (
-            <Path key={`leg-${i}`} path={lp} style="stroke" strokeWidth={cfg.legSW} color={STROKE} />
+          {cfg.legs.map((leg, i) => (
+            <G key={`leg-${i}`}>
+              <Polyline
+                points={`${leg.base[0]},${leg.base[1]} ${leg.tip[0]},${leg.tip[1]}`}
+                fill="none"
+                stroke={STROKE}
+                strokeWidth={cfg.legSW}
+              />
+              <Polygon
+                points={pts(hoofPts(leg.hoof))}
+                fill="none"
+                stroke={STROKE}
+                strokeWidth={cfg.legSW}
+              />
+            </G>
           ))}
 
           {/* Head */}
-          <Path path={headPath} style="stroke" strokeWidth={SW} color={STROKE} />
+          <Polygon points={pts(headPts)} fill="none" stroke={STROKE} strokeWidth={SW} />
 
-          {/* Second head */}
-          {secondHeadPath && (
-            <Path path={secondHeadPath} style="stroke" strokeWidth={SW * 0.8} color={STROKE} opacity={0.8} />
+          {/* Second head (type 19) */}
+          {cfg.secondHead && (
+            <Polygon
+              points="-20,-30 2,-42 6,-60 -18,-54"
+              fill="none"
+              stroke={STROKE}
+              strokeWidth={SW * 0.8}
+              opacity={0.8}
+            />
           )}
 
           {/* Ears */}
-          {earPaths.map((ep, i) => (
-            <Path key={`ear-${i}`} path={ep} style="stroke" strokeWidth={SW} color={STROKE} />
+          {earPtsList.map((ep, i) => (
+            <Polygon key={`ear-${i}`} points={pts(ep)} fill="none" stroke={STROKE} strokeWidth={SW} />
           ))}
 
           {/* Eye (filled) */}
           {cfg.showEye && (
-            <Path path={eyePath} style="fill" color={STROKE} />
+            <Polygon points={pts(eyePts)} fill={STROKE} stroke="none" />
           )}
 
           {/* Snout */}
-          <Path path={snoutPath} style="stroke" strokeWidth={SW} color={STROKE} />
+          <Polygon points={pts(snoutPts)} fill="none" stroke={STROKE} strokeWidth={SW} />
 
           {/* Dream fragments */}
-          {fragmentPaths.map(({ path, frag }) => (
-            <Path
-              key={frag.id}
-              path={path}
-              style="fill"
-              color={`hsl(${frag.hue}, ${frag.saturation}%, ${frag.lightness}%)`}
-              opacity={frag.opacity}
-            />
-          ))}
-        </Group>
-      </Canvas>
+          {fragments.map(frag => {
+            const s = frag.size / 2;
+            const fragPts: Pt[] = [
+              [frag.x, frag.y - s],
+              [frag.x + s, frag.y],
+              [frag.x, frag.y + s],
+              [frag.x - s, frag.y],
+            ];
+            return (
+              <Polygon
+                key={frag.id}
+                points={pts(fragPts)}
+                fill={`hsl(${frag.hue}, ${frag.saturation}%, ${frag.lightness}%)`}
+                opacity={frag.opacity}
+                stroke="none"
+              />
+            );
+          })}
+        </G>
+      </Svg>
     </View>
   );
 }

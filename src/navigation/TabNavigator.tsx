@@ -4,8 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import PlazaScreen from '../screens/PlazaScreen';
 import RecordsScreen from '../screens/RecordsScreen';
@@ -24,6 +24,7 @@ const TABS: { name: TabName; label: string; icon: string }[] = [
 
 export default function TabNavigator() {
   const [activeTab, setActiveTab] = useState<TabName>('home');
+  const insets = useSafeAreaInsets();
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -36,11 +37,11 @@ export default function TabNavigator() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
         {renderScreen()}
       </View>
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         {TABS.map(tab => {
           const active = activeTab === tab.name;
           return (
@@ -60,7 +61,7 @@ export default function TabNavigator() {
           );
         })}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -77,14 +78,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F4EF',
     borderTopWidth: 1,
     borderTopColor: '#E0DDD8',
-    paddingBottom: 4,
-    paddingTop: 4,
-    height: 60,
+    paddingTop: 6,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 2,
   },
   tabIcon: {
     fontSize: 18,

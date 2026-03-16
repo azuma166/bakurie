@@ -164,6 +164,28 @@ export default function ProfileScreen() {
         {/* Divider */}
         <View style={styles.divider} />
 
+        {/* Usage guide */}
+        <Text style={styles.sectionTitle}>使い方</Text>
+        <View style={styles.guideBox}>
+          {[
+            { step: '1', text: '朝目覚めたら「夢を食べさせる」ボタンを押す' },
+            { step: '2', text: 'バクが起床時刻を記録し、夢のかけらを吸収する' },
+            { step: '3', text: '毎日続けると平均起床時刻（EMA）が更新される' },
+            { step: '4', text: '夢広場でフォロー中のバクたちの状況を確認する' },
+            { step: '5', text: '平均をリセットすると新しいバクが現れる' },
+          ].map(({ step, text }) => (
+            <View key={step} style={styles.guideRow}>
+              <View style={styles.guideStepBadge}>
+                <Text style={styles.guideStepText}>{step}</Text>
+              </View>
+              <Text style={styles.guideText}>{text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
         {/* Settings */}
         <Text style={styles.sectionTitle}>設定</Text>
         <TouchableOpacity style={styles.settingRow} onPress={handleReset}>
@@ -332,6 +354,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 8,
     letterSpacing: 1,
+  },
+  guideBox: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: '#FDFCF9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E5E0',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  guideRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    gap: 10,
+  },
+  guideStepBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E8E5E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  guideStepText: {
+    fontSize: 10,
+    color: '#888',
+    fontWeight: '500',
+  },
+  guideText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#4A4A4A',
+    lineHeight: 20,
   },
   settingRow: {
     flexDirection: 'row',

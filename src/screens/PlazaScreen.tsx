@@ -21,7 +21,7 @@ function BakuCard({ user, onPress }: { user: MockUser; onPress: () => void }) {
       activeOpacity={0.8}
     >
       <View style={[styles.bakuThumb, user.hasWokenToday && styles.bakuThumbWoken]}>
-        <BakuCanvas bakuType={user.bakuType} size={100} />
+        <BakuCanvas bakuType={user.bakuType} size={64} />
       </View>
       <Text style={[styles.cardName, user.hasWokenToday && styles.cardNameWoken]}>
         {user.name}
@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0EEE9',
   },
   bakuThumb: {
-    width: 100,
-    height: 100,
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
   },

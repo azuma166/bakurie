@@ -15,10 +15,11 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
-import { getFollowRelation, clearAllData } from '../store/storage';
+import { clearAllData } from '../store/storage';
 import { signOut, deleteUser } from 'firebase/auth';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { getFirestoreUser } from '../services/firestoreUser';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
@@ -71,8 +72,11 @@ export default function ProfileScreen() {
   const [editBio, setEditBio] = useState('');
 
   const loadRelation = useCallback(async () => {
-    const rel = await getFollowRelation();
-    setRelation(rel);
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      const fp = await getFirestoreUser(uid);
+      setRelation({ followingIds: fp?.followingIds ?? [] });
+    }
   }, []);
 
   useEffect(() => { loadRelation(); }, [loadRelation]);

@@ -138,15 +138,10 @@ export default function ProfileScreen() {
 
         {/* Follow stats */}
         <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statItem}>
+          <View style={styles.statItem}>
             <Text style={styles.statNum}>{relation.followingIds.length}</Text>
             <Text style={styles.statLabel}>フォロー中</Text>
-          </TouchableOpacity>
-          <View style={styles.statDivider} />
-          <TouchableOpacity style={styles.statItem}>
-            <Text style={styles.statNum}>{relation.followerIds.length}</Text>
-            <Text style={styles.statLabel}>フォロワー</Text>
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Wake stats */}

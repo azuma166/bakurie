@@ -20,7 +20,7 @@ import {
 import { MockUser, FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 
-type Tab = 'search' | 'following' | 'followers';
+type Tab = 'search' | 'following';
 
 function UserRow({
   user,
@@ -56,7 +56,7 @@ function UserRow({
 export default function SearchScreen() {
   const [tab, setTab] = useState<Tab>('search');
   const [query, setQuery] = useState('');
-  const [relation, setRelation] = useState<FollowRelation>({ followingIds: [], followerIds: [] });
+  const [relation, setRelation] = useState<FollowRelation>({ followingIds: [] });
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -86,14 +86,8 @@ export default function SearchScreen() {
     .map(id => getMockUserById(id))
     .filter((u): u is MockUser => !!u);
 
-  const followerUsers = relation.followerIds
-    .map(id => getMockUserById(id))
-    .filter((u): u is MockUser => !!u);
-
   const displayList: MockUser[] =
-    tab === 'search' ? searchResults :
-    tab === 'following' ? followingUsers :
-    followerUsers;
+    tab === 'search' ? searchResults : followingUsers;
 
   if (loading) {
     return (
@@ -111,14 +105,14 @@ export default function SearchScreen() {
 
       {/* Tabs */}
       <View style={styles.tabs}>
-        {(['search', 'following', 'followers'] as Tab[]).map(t => (
+        {(['search', 'following'] as Tab[]).map(t => (
           <TouchableOpacity
             key={t}
             style={[styles.tab, tab === t && styles.tabActive]}
             onPress={() => setTab(t)}
           >
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'search' ? '検索' : t === 'following' ? `フォロー中 ${relation.followingIds.length}` : `フォロワー ${relation.followerIds.length}`}
+              {t === 'search' ? '検索' : `フォロー中 ${relation.followingIds.length}`}
             </Text>
           </TouchableOpacity>
         ))}

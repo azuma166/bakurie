@@ -18,7 +18,6 @@ export type UserProfile = {
 
 export type FollowRelation = {
   followingIds: string[];
-  followerIds: string[];
 };
 
 export type MockUser = {

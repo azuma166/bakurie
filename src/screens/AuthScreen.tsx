@@ -20,6 +20,7 @@ export default function AuthScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,8 +31,13 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       if (mode === 'signup') {
+        if (!name.trim()) {
+          setError('ユーザー名を入力してください');
+          setLoading(false);
+          return;
+        }
         const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        await createUserInFirestore(cred.user.uid, {});
+        await createUserInFirestore(cred.user.uid, { name: name.trim() });
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       }
@@ -70,6 +76,17 @@ export default function AuthScreen() {
           </TouchableOpacity>
         </View>
 
+        {mode === 'signup' && (
+          <TextInput
+            style={styles.input}
+            placeholder="ユーザー名"
+            placeholderTextColor="#BCBAB7"
+            value={name}
+            onChangeText={setName}
+            autoCorrect={false}
+            maxLength={20}
+          />
+        )}
         <TextInput
           style={styles.input}
           placeholder="メールアドレス"

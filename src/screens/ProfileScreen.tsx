@@ -14,7 +14,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
-import { getFollowRelation } from '../store/storage';
+import { getFollowRelation, clearAllData } from '../store/storage';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 
@@ -67,8 +67,22 @@ export default function ProfileScreen() {
     );
   }, [resetAverage]);
 
-  const handleLogout = useCallback(() => {
-    Alert.alert('ログアウト', '（この MVP はオフラインのみです）');
+  const handleClearAll = useCallback(() => {
+    Alert.alert(
+      'データをすべて削除',
+      '記録・プロフィール・フォローがすべて消えます。この操作は取り消せません。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除する',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAllData();
+            Alert.alert('削除完了', 'データをすべて削除しました。アプリを再起動してください。');
+          },
+        },
+      ]
+    );
   }, []);
 
   if (loading || !profile) {
@@ -187,8 +201,8 @@ export default function ProfileScreen() {
           <Text style={styles.settingText}>平均リセット（新しいバクを迎える）</Text>
           <Text style={styles.settingArrow}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
-          <Text style={[styles.settingText, { color: '#A08080' }]}>ログアウト</Text>
+        <TouchableOpacity style={styles.settingRow} onPress={handleClearAll}>
+          <Text style={[styles.settingText, { color: '#A08080' }]}>データをすべて削除</Text>
           <Text style={styles.settingArrow}>›</Text>
         </TouchableOpacity>
       </ScrollView>

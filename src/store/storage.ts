@@ -38,6 +38,10 @@ export async function clearWakeRecords(): Promise<void> {
   await AsyncStorage.setItem(KEYS.WAKE_RECORDS, JSON.stringify([]));
 }
 
+export async function clearAllData(): Promise<void> {
+  await AsyncStorage.multiRemove(Object.values(KEYS));
+}
+
 // --- User Profile ---
 
 const DEFAULT_PROFILE: UserProfile = {

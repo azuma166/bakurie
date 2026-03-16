@@ -65,18 +65,25 @@ export default function SearchScreen() {
   const [allUsers, setAllUsers] = useState<FirestoreUser[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const myUid = auth.currentUser?.uid ?? '';
 
   const load = useCallback(async () => {
-    const [users, me] = await Promise.all([
-      getAllUsers(),
-      myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
-    ]);
-    // exclude self
-    setAllUsers(users.filter(u => u.uid !== myUid));
-    setFollowingIds(me?.followingIds ?? []);
-    setLoading(false);
+    setError(null);
+    try {
+      const [users, me] = await Promise.all([
+        getAllUsers(),
+        myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
+      ]);
+      setAllUsers(users.filter(u => u.uid !== myUid));
+      setFollowingIds(me?.followingIds ?? []);
+    } catch (e: any) {
+      console.error('SearchScreen load error:', e);
+      setError(e?.message ?? '読み込みに失敗しました');
+    } finally {
+      setLoading(false);
+    }
   }, [myUid]);
 
   useEffect(() => { load(); }, [load]);
@@ -104,8 +111,19 @@ export default function SearchScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator color="#2A2A2A" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Text style={{ color: '#E05C5C', textAlign: 'center', fontSize: 13 }}>{error}</Text>
+        <TouchableOpacity onPress={load} style={{ marginTop: 16 }}>
+          <Text style={{ color: '#2A2A2A', fontSize: 13 }}>再読み込み</Text>
+        </TouchableOpacity>
       </View>
     );
   }

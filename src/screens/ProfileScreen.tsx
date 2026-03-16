@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
@@ -72,36 +73,38 @@ export default function ProfileScreen() {
 
 
   const handleClearAll = useCallback(() => {
-    Alert.alert(
-      'データをすべて削除',
-      'アカウントが完全に削除されます。記録・プロフィール・認証情報がすべて消えます。同じメールアドレスで再度新規登録できます。この操作は取り消せません。',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '削除する',
-          style: 'destructive',
-          onPress: async () => {
-            const user = auth.currentUser;
-            if (!user) return;
-            try {
-              await deleteDoc(doc(db, 'users', user.uid));
-              await clearAllData();
-              await deleteUser(user);
-              // deleteUser により onAuthStateChanged が null になり AuthScreen へ自動遷移
-            } catch (e: any) {
-              if (e?.code === 'auth/requires-recent-login') {
-                Alert.alert(
-                  '再認証が必要です',
-                  '一度ログアウトして再ログインしてから、もう一度お試しください。'
-                );
-              } else {
-                Alert.alert('エラー', e?.message ?? '削除に失敗しました。');
-              }
-            }
-          },
-        },
-      ]
-    );
+    const confirmMessage = 'アカウントが完全に削除されます。記録・プロフィール・認証情報がすべて消えます。同じメールアドレスで再度新規登録できます。この操作は取り消せません。';
+
+    const doDelete = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        await deleteDoc(doc(db, 'users', user.uid));
+        await clearAllData();
+        await deleteUser(user);
+      } catch (e: any) {
+        if (e?.code === 'auth/requires-recent-login') {
+          Alert.alert('再認証が必要です', '一度ログアウトして再ログインしてから、もう一度お試しください。');
+        } else {
+          Alert.alert('エラー', e?.message ?? '削除に失敗しました。');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('データをすべて削除\n\n' + confirmMessage)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'データをすべて削除',
+        confirmMessage,
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: '削除する', style: 'destructive', onPress: doDelete },
+        ]
+      );
+    }
   }, []);
 
   if (loading || !profile) {

@@ -14,6 +14,7 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { createUserInFirestore } from '../services/firestoreUser';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -29,7 +30,8 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       if (mode === 'signup') {
-        await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        await createUserInFirestore(cred.user.uid, {});
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       }

@@ -56,7 +56,8 @@ const legsPath = LEGS.map(l =>
   `<polygon points="${pt(l.h)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>`
 ).join('\n');
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}">
+// Icon with rounded background (for iOS / general icon)
+const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" rx="${SIZE * 0.22}" fill="${BG}"/>
   ${fragments()}
   <polygon points="${pt(TAIL)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
@@ -68,9 +69,21 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${S
   <polygon points="${pt(SNOUT)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
 </svg>`;
 
-await sharp(Buffer.from(svg)).resize(1024, 1024).png().toFile('assets/icon.png');
-await sharp(Buffer.from(svg)).resize(1024, 1024).png().toFile('assets/adaptive-icon.png');
-await sharp(Buffer.from(svg)).resize(512,  512).png().toFile('assets/splash-icon.png');
-await sharp(Buffer.from(svg)).resize(48,   48).png().toFile('assets/favicon.png');
+// Adaptive icon foreground: transparent background (Android applies its own shape/bg)
+const svgAdaptive = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}">
+  ${fragments()}
+  <polygon points="${pt(TAIL)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
+  ${legsPath}
+  <polygon points="${pt(BODY)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
+  <polygon points="${pt(HEAD)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
+  <polygon points="${pt(EAR)}"  fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
+  <polygon points="${pt(EYE)}"  fill="${STROKE}" stroke="none"/>
+  <polygon points="${pt(SNOUT)}" fill="none" stroke="${STROKE}" stroke-width="${sw}" stroke-linejoin="round"/>
+</svg>`;
+
+await sharp(Buffer.from(svgIcon)).resize(1024, 1024).png().toFile('assets/icon.png');
+await sharp(Buffer.from(svgAdaptive)).resize(1024, 1024).png().toFile('assets/adaptive-icon.png');
+await sharp(Buffer.from(svgIcon)).resize(512,  512).png().toFile('assets/splash-icon.png');
+await sharp(Buffer.from(svgIcon)).resize(48,   48).png().toFile('assets/favicon.png');
 
 console.log('Icons generated successfully.');

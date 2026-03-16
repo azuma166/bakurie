@@ -11,13 +11,13 @@ import {
 } from 'react-native';
 import BakuCanvas from '../components/BakuCanvas';
 import {
-  getFollowRelation,
-  followUser,
-  unfollowUser,
-  MOCK_USERS,
-  getMockUserById,
-} from '../store/storage';
-import { MockUser, FollowRelation } from '../types';
+  getAllUsers,
+  followUserFirestore,
+  unfollowUserFirestore,
+  getFirestoreUser,
+  FirestoreUser,
+} from '../services/firestoreUser';
+import { auth } from '../config/firebase';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
@@ -28,7 +28,7 @@ function UserRow({
   isFollowing,
   onToggle,
 }: {
-  user: MockUser;
+  user: FirestoreUser;
   isFollowing: boolean;
   onToggle: () => void;
 }) {
@@ -43,8 +43,9 @@ function UserRow({
       </View>
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.name}</Text>
-        <Text style={styles.userBio} numberOfLines={1}>{user.bio}</Text>
+        {user.bio ? <Text style={styles.userBio} numberOfLines={1}>{user.bio}</Text> : null}
         <Text style={styles.userEma}>平均 {minutesToTime(user.emaMinutes)}</Text>
+        <Text style={styles.userRecord}>{user.recordCount}日記録</Text>
       </View>
       <TouchableOpacity
         style={[styles.followBtn, isFollowing && styles.followBtnDone]}
@@ -61,37 +62,44 @@ function UserRow({
 export default function SearchScreen() {
   const [tab, setTab] = useState<Tab>('search');
   const [query, setQuery] = useState('');
-  const [relation, setRelation] = useState<FollowRelation>({ followingIds: [] });
+  const [allUsers, setAllUsers] = useState<FirestoreUser[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const myUid = auth.currentUser?.uid ?? '';
+
   const load = useCallback(async () => {
-    const rel = await getFollowRelation();
-    setRelation(rel);
+    const [users, me] = await Promise.all([
+      getAllUsers(),
+      myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
+    ]);
+    // exclude self
+    setAllUsers(users.filter(u => u.uid !== myUid));
+    setFollowingIds(me?.followingIds ?? []);
     setLoading(false);
-  }, []);
+  }, [myUid]);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleToggleFollow = useCallback(async (userId: string) => {
-    const isFollowing = relation.followingIds.includes(userId);
+  const handleToggleFollow = useCallback(async (targetUid: string) => {
+    if (!myUid) return;
+    const isFollowing = followingIds.includes(targetUid);
     if (isFollowing) {
-      await unfollowUser(userId);
-      setRelation(prev => ({ ...prev, followingIds: prev.followingIds.filter(id => id !== userId) }));
+      await unfollowUserFirestore(myUid, targetUid);
+      setFollowingIds(prev => prev.filter(id => id !== targetUid));
     } else {
-      await followUser(userId);
-      setRelation(prev => ({ ...prev, followingIds: [...prev.followingIds, userId] }));
+      await followUserFirestore(myUid, targetUid);
+      setFollowingIds(prev => [...prev, targetUid]);
     }
-  }, [relation.followingIds]);
+  }, [myUid, followingIds]);
 
   const searchResults = query.trim()
-    ? MOCK_USERS.filter(u => u.name.includes(query.trim()))
-    : MOCK_USERS;
+    ? allUsers.filter(u => u.name.includes(query.trim()))
+    : allUsers;
 
-  const followingUsers = relation.followingIds
-    .map(id => getMockUserById(id))
-    .filter((u): u is MockUser => !!u);
+  const followingUsers = allUsers.filter(u => followingIds.includes(u.uid));
 
-  const displayList: MockUser[] = tab === 'search' ? searchResults : followingUsers;
+  const displayList = tab === 'search' ? searchResults : followingUsers;
 
   if (loading) {
     return (
@@ -107,7 +115,6 @@ export default function SearchScreen() {
         <Text style={styles.title}>検索・フォロー</Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
         {(['search', 'following'] as Tab[]).map(t => (
           <TouchableOpacity
@@ -116,13 +123,12 @@ export default function SearchScreen() {
             onPress={() => setTab(t)}
           >
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'search' ? '検索' : `フォロー中 ${relation.followingIds.length}`}
+              {t === 'search' ? '検索' : `フォロー中 ${followingIds.length}`}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Search bar */}
       {tab === 'search' && (
         <View style={styles.searchBar}>
           <TextInput
@@ -144,10 +150,10 @@ export default function SearchScreen() {
         ) : (
           displayList.map(item => (
             <UserRow
-              key={item.id}
+              key={item.uid}
               user={item}
-              isFollowing={relation.followingIds.includes(item.id)}
-              onToggle={() => handleToggleFollow(item.id)}
+              isFollowing={followingIds.includes(item.uid)}
+              onToggle={() => handleToggleFollow(item.uid)}
             />
           ))
         )}
@@ -157,117 +163,41 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F4EF',
-  },
-  header: {
-    paddingTop: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: '#2A2A2A',
-    letterSpacing: 2,
-  },
+  container: { flex: 1, backgroundColor: '#F7F4EF' },
+  header: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 8 },
+  title: { fontSize: 20, fontWeight: '300', color: '#2A2A2A', letterSpacing: 2 },
   tabs: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    backgroundColor: '#EDEAE5',
-    padding: 3,
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 8,
+    borderRadius: 12, backgroundColor: '#EDEAE5', padding: 3,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  tabActive: {
-    backgroundColor: '#F7F4EF',
-  },
-  tabText: {
-    fontSize: 12,
-    color: '#888',
-  },
-  tabTextActive: {
-    color: '#2A2A2A',
-    fontWeight: '500',
-  },
-  searchBar: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
+  tab: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 10 },
+  tabActive: { backgroundColor: '#F7F4EF' },
+  tabText: { fontSize: 12, color: '#888' },
+  tabTextActive: { color: '#2A2A2A', fontWeight: '500' },
+  searchBar: { marginHorizontal: 16, marginBottom: 8 },
   searchInput: {
-    backgroundColor: '#FDFCF9',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#2A2A2A',
-    borderWidth: 1,
-    borderColor: '#E8E5E0',
+    backgroundColor: '#FDFCF9', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    fontSize: 14, color: '#2A2A2A',
+    borderWidth: 1, borderColor: '#E8E5E0',
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
+  list: { paddingHorizontal: 16, paddingBottom: 20 },
   userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0EDE8',
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0EDE8',
   },
-  bakuMini: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userInfo: {
-    flex: 1,
-    paddingHorizontal: 10,
-    gap: 2,
-  },
-  userName: {
-    fontSize: 14,
-    color: '#2A2A2A',
-    fontWeight: '500',
-  },
-  userBio: {
-    fontSize: 11,
-    color: '#888',
-  },
-  userEma: {
-    fontSize: 11,
-    color: '#BCBAB7',
-  },
+  bakuMini: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
+  userInfo: { flex: 1, paddingHorizontal: 10, gap: 2 },
+  userName: { fontSize: 14, color: '#2A2A2A', fontWeight: '500' },
+  userBio: { fontSize: 11, color: '#888' },
+  userEma: { fontSize: 11, color: '#BCBAB7' },
+  userRecord: { fontSize: 10, color: '#C0BDB8' },
   followBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: '#2A2A2A',
+    paddingVertical: 6, paddingHorizontal: 14,
+    borderRadius: 16, backgroundColor: '#2A2A2A',
   },
-  followBtnDone: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#C0BDB8',
-  },
-  followBtnText: {
-    fontSize: 12,
-    color: '#F7F4EF',
-  },
-  followBtnTextDone: {
-    color: '#888',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#BCBAB7',
-    fontSize: 13,
-    marginTop: 40,
-  },
+  followBtnDone: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#C0BDB8' },
+  followBtnText: { fontSize: 12, color: '#F7F4EF' },
+  followBtnTextDone: { color: '#888' },
+  emptyText: { textAlign: 'center', color: '#BCBAB7', fontSize: 13, marginTop: 40 },
 });

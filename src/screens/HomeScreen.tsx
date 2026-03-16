@@ -8,27 +8,39 @@ import {
   Animated,
   ActivityIndicator,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
+// 吸い込みパーティクル：6方向から体内へ収束
+const ABSORB_COUNT = 6;
+
 export default function HomeScreen() {
   const { profile, records, loading, todayRecorded, recordWake, resetAverage } = useWakeData();
   const [absorbing, setAbsorbing] = useState(false);
   const absorbAnim = useRef(new Animated.Value(0)).current;
 
+  // 食べさせるたびに変わる新しいかけらの色（hue 0〜360）
+  const [colorSeed, setColorSeed] = useState(() => Math.floor(Math.random() * 360));
+  // 吸い込みパーティクルの色もこのhueに連動
+  const [feedHue, setFeedHue] = useState(200);
+
   const fragments = useMemo(
-    () => generateFragments(Math.min(records.length, 20)),
-    [records.length]
+    () => generateFragments(Math.min(records.length, 20), colorSeed),
+    [records.length, colorSeed]
   );
 
   const handleFeed = useCallback(async () => {
     if (absorbing || !profile) return;
+
+    const newSeed = Math.floor(Math.random() * 360);
+    setColorSeed(newSeed);
+    setFeedHue(newSeed);
     setAbsorbing(true);
 
-    // Start absorption animation
     absorbAnim.setValue(0);
     Animated.timing(absorbAnim, {
       toValue: 1,
@@ -41,18 +53,20 @@ export default function HomeScreen() {
   }, [absorbing, profile, recordWake, absorbAnim]);
 
   const handleReset = useCallback(() => {
-    Alert.alert(
-      '平均をリセット',
-      '記録がすべて消え、新しいバクがやってきます。リセットしますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: 'リセット',
-          style: 'destructive',
-          onPress: resetAverage,
-        },
-      ]
-    );
+    if (Platform.OS === 'web') {
+      if (window.confirm('平均リセット\n\n記録がすべて消え、新しいバクがやってきます。')) {
+        resetAverage();
+      }
+    } else {
+      Alert.alert(
+        '平均リセット',
+        '記録がすべて消え、新しいバクがやってきます。',
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: 'リセット', style: 'destructive', onPress: resetAverage },
+        ]
+      );
+    }
   }, [resetAverage]);
 
   if (loading || !profile) {
@@ -95,27 +109,53 @@ export default function HomeScreen() {
 
       {/* Baku */}
       <View style={styles.bakuWrapper}>
-        {/* Absorption animation particle */}
+        {/* 吸い込みパーティクル：6方向から体内に収束 */}
         {absorbing && (
-          <Animated.View
-            style={[
-              styles.absorbParticle,
-              {
-                opacity: absorbAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.8, 0] }),
-                transform: [
-                  {
-                    translateY: absorbAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-60, 0],
-                    }),
-                  },
-                  {
-                    scale: absorbAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1.2, 0.8, 0.2] }),
-                  },
-                ],
-              },
-            ]}
-          />
+          <View style={styles.absorbContainer} pointerEvents="none">
+            {Array.from({ length: ABSORB_COUNT }, (_, i) => {
+              const angle = (i / ABSORB_COUNT) * Math.PI * 2;
+              const r = 110;
+              const startX = Math.cos(angle) * r;
+              const startY = Math.sin(angle) * r;
+              const hue = (feedHue + i * 30) % 360;
+              return (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.absorbParticle,
+                    {
+                      backgroundColor: `hsl(${hue}, 70%, 65%)`,
+                      opacity: absorbAnim.interpolate({
+                        inputRange: [0, 0.15, 0.8, 1],
+                        outputRange: [0, 1, 0.8, 0],
+                      }),
+                      transform: [
+                        {
+                          translateX: absorbAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [startX, 0],
+                          }),
+                        },
+                        {
+                          translateY: absorbAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [startY, 0],
+                          }),
+                        },
+                        {
+                          scale: absorbAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1.0, 0.1],
+                          }),
+                        },
+                        { rotate: '45deg' },
+                      ],
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
         )}
         <BakuCanvas
           bakuType={profile.bakuType}
@@ -192,12 +232,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  absorbContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   absorbParticle: {
     position: 'absolute',
-    width: 16,
-    height: 16,
-    backgroundColor: 'hsl(200, 60%, 70%)',
-    transform: [{ rotate: '45deg' }],
+    width: 12,
+    height: 12,
+    marginTop: -6,
+    marginLeft: -6,
   },
   feedButton: {
     backgroundColor: '#2A2A2A',

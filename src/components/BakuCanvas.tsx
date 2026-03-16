@@ -2,8 +2,8 @@
  * BakuCanvas – D-2型バクの描画コンポーネント
  * react-native-svg 版（Expo Go 対応）
  */
-import React, { useMemo, useEffect, useRef } from 'react';
-import { View, Animated } from 'react-native';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import { Animated } from 'react-native';
 import Svg, { Polygon, Polyline, Line, G } from 'react-native-svg';
 
 // ----------------------------------------------------------------
@@ -188,11 +188,10 @@ const NATURAL = 260;
 
 export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Props) {
   const cfg = useMemo(() => buildConfig(bakuType), [bakuType]);
-  // Always use the natural centre so geometry stays consistent regardless of size
   const cx = NATURAL / 2;
   const cy = NATURAL / 2 + 10;
 
-  // Breathing animation
+  // ── 呼吸アニメーション（scaleY, native driver, 周期4秒）──────────
   const breathe = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(
@@ -203,23 +202,70 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
     ).start();
   }, []);
 
+  // ── JSアニメーションクロック（脚・尻尾・かけら用、20fps）────────
+  const [animTime, setAnimTime] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => {
+      setAnimTime((Date.now() - start) / 1000);
+    }, 50);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── まばたき（10〜15秒に一度、150ms 目が消える）─────────────────
+  const [eyeVisible, setEyeVisible] = useState(true);
+  useEffect(() => {
+    let t1: ReturnType<typeof setTimeout>;
+    let t2: ReturnType<typeof setTimeout>;
+    const scheduleBlink = () => {
+      t1 = setTimeout(() => {
+        setEyeVisible(false);
+        t2 = setTimeout(() => {
+          setEyeVisible(true);
+          scheduleBlink();
+        }, 150);
+      }, 10000 + Math.random() * 5000);
+    };
+    scheduleBlink();
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  // ── 頭・耳・目・鼻先（静的オフセット）──────────────────────────
   const headPts = offPts(cfg.headPts, 0, cfg.headOffY);
   const earPtsList = cfg.earPts.map(ep => offPts(ep, 0, cfg.headOffY));
   const eyePts = offPts(EYE, 0, cfg.headOffY);
   const snoutPts = offPts(cfg.snoutPts, 0, cfg.headOffY);
-  const tailPtsList = cfg.tailPts.map(tp => offPts(tp, 0, cfg.tailOffY));
 
-  // Global transform string
+  // ── 尻尾アニメーション（振幅5px、周期5秒）──────────────────────
+  const tailOffX = Math.sin((animTime * Math.PI * 2) / 5) * 5;
+  const animatedTailPtsList = cfg.tailPts.map(tp => {
+    const base = offPts(tp, 0, cfg.tailOffY);
+    // 根元(idx=0)は固定、先端へ向かうほど大きく揺れる
+    return base.map((pt, idx) =>
+      idx === 0 ? pt : [pt[0] + tailOffX * (idx / (base.length - 1)), pt[1]] as Pt
+    );
+  });
+
+  // ── 脚アニメーション（振幅3px、周期2秒、4本の位相をずらす）────
+  const animatedLegs = cfg.legs.map((leg, i) => {
+    const phase = (i / 4) * Math.PI * 2;
+    const xOff = Math.sin((animTime * Math.PI * 2) / 2 + phase) * 3;
+    return {
+      base: leg.base,
+      tip: [leg.tip[0] + xOff, leg.tip[1]] as Pt,
+      hoof: leg.hoof.map(([x, y]) => [x + xOff, y]) as [Pt, Pt, Pt],
+    };
+  });
+
+  // ── グローバル transform ─────────────────────────────────────
   const transforms: string[] = [`translate(${cx}, ${cy})`];
   if (cfg.globalScale !== 1) transforms.push(`scale(${cfg.globalScale})`);
   if (cfg.flipX) transforms.push('scale(-1, 1)');
   if (cfg.rotate !== 0) transforms.push(`rotate(${cfg.rotate})`);
   const transform = transforms.join(' ');
 
-  // Back spike points
   const spikePts: [number, number, number][] = [[-30, -16, 14], [-10, -24, 14], [10, -20, 14]];
 
-  // Hoof scaling helper
   function hoofPts(hoof: [Pt, Pt, Pt]): Pt[] {
     if (!cfg.largeHooves) return hoof;
     const hcx = (hoof[0][0] + hoof[1][0] + hoof[2][0]) / 3;
@@ -228,7 +274,7 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
   }
 
   return (
-    <Animated.View style={{ width: size, height: size, transform: [{ scale: breathe }] }}>
+    <Animated.View style={{ width: size, height: size, transform: [{ scaleY: breathe }] }}>
       <Svg width={size} height={size} viewBox={`0 0 ${NATURAL} ${NATURAL}`}>
         <G transform={transform}>
           {/* Double body outline */}
@@ -272,13 +318,13 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
             />
           ))}
 
-          {/* Tail */}
-          {tailPtsList.map((tp, i) => (
+          {/* Tail（アニメーション済み） */}
+          {animatedTailPtsList.map((tp, i) => (
             <Polygon key={`tail-${i}`} points={pts(tp)} fill="none" stroke={STROKE} strokeWidth={SW} />
           ))}
 
-          {/* Legs */}
-          {cfg.legs.map((leg, i) => (
+          {/* Legs（アニメーション済み） */}
+          {animatedLegs.map((leg, i) => (
             <G key={`leg-${i}`}>
               <Polyline
                 points={`${leg.base[0]},${leg.base[1]} ${leg.tip[0]},${leg.tip[1]}`}
@@ -314,22 +360,24 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
             <Polygon key={`ear-${i}`} points={pts(ep)} fill="none" stroke={STROKE} strokeWidth={SW} />
           ))}
 
-          {/* Eye (filled) */}
-          {cfg.showEye && (
+          {/* Eye（まばたきアニメーション） */}
+          {cfg.showEye && eyeVisible && (
             <Polygon points={pts(eyePts)} fill={STROKE} stroke="none" />
           )}
 
           {/* Snout */}
           <Polygon points={pts(snoutPts)} fill="none" stroke={STROKE} strokeWidth={SW} />
 
-          {/* Dream fragments */}
+          {/* Dream fragments（漂うアニメーション） */}
           {fragments.map(frag => {
+            const animX = frag.x + Math.sin(animTime * 0.5 + frag.phase) * 2;
+            const animY = frag.y + Math.cos(animTime * 0.4 + frag.phase) * 2;
             const s = frag.size / 2;
             const fragPts: Pt[] = [
-              [frag.x, frag.y - s],
-              [frag.x + s, frag.y],
-              [frag.x, frag.y + s],
-              [frag.x - s, frag.y],
+              [animX, animY - s],
+              [animX + s, animY],
+              [animX, animY + s],
+              [animX - s, animY],
             ];
             return (
               <Polygon

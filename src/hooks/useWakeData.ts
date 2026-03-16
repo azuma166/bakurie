@@ -23,9 +23,10 @@ export function useWakeData() {
 
   const load = useCallback(async () => {
     const uid = auth.currentUser?.uid;
-    const [p, r, hues] = await Promise.all([getUserProfile(), getWakeRecords(), getFeedHues()]);
+    const [p, r, localHues] = await Promise.all([getUserProfile(), getWakeRecords(), getFeedHues()]);
 
-    // Sync bakuType and emaMinutes from Firestore if available
+    // Sync fields from Firestore (source of truth)
+    let resolvedHues = localHues;
     if (uid) {
       const fp = await getFirestoreUser(uid);
       if (fp) {
@@ -33,13 +34,26 @@ export function useWakeData() {
         p.emaMinutes = fp.emaMinutes;
         p.name = fp.name;
         p.bio = fp.bio;
+
+        // Sync feedHues from Firestore so self-view matches what others see
+        if (fp.feedHues) {
+          resolvedHues = fp.feedHues;
+          await saveFeedHues(fp.feedHues);
+        }
+
+        // Reset hasWokenToday in Firestore if it's a new day
+        const today = formatDate(new Date());
+        if (fp.hasWokenToday && fp.lastWakeDate !== today) {
+          await updateFirestoreUser(uid, { hasWokenToday: false });
+        }
+
         await saveUserProfile(p);
       }
     }
 
     setProfile(p);
     setRecords(r);
-    setFeedHues(hues);
+    setFeedHues(resolvedHues);
     const today = formatDate(new Date());
     setTodayRecorded(r.some(rec => rec.date === today));
     setLoading(false);

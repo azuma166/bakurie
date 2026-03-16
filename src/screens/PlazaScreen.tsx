@@ -11,7 +11,7 @@ import {
 import BakuCanvas from '../components/BakuCanvas';
 import { getAllUsers, getFirestoreUser, FirestoreUser } from '../services/firestoreUser';
 import { auth } from '../config/firebase';
-import { minutesToTime } from '../utils/ema';
+import { minutesToTime, formatDate } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
 /** ダイヤモンドドット（各ユーザーのかけら色パレット） */
@@ -78,7 +78,10 @@ export default function PlazaScreen() {
         myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
       ]);
       const followingIds = new Set(me?.followingIds ?? []);
-      const users = allUsers.filter(u => followingIds.has(u.uid));
+      const today = formatDate(new Date());
+      const users = allUsers
+        .filter(u => followingIds.has(u.uid))
+        .map(u => ({ ...u, hasWokenToday: u.hasWokenToday && u.lastWakeDate === today }));
       users.sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
       setFollowingUsers(users);
     } catch (e: any) {

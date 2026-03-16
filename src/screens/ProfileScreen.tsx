@@ -15,8 +15,9 @@ import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
 import { getFollowRelation, clearAllData } from '../store/storage';
-import { signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { signOut, deleteUser } from 'firebase/auth';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 
@@ -73,15 +74,30 @@ export default function ProfileScreen() {
   const handleClearAll = useCallback(() => {
     Alert.alert(
       'データをすべて削除',
-      '記録・プロフィール・フォローがすべて消えます。この操作は取り消せません。',
+      'アカウントが完全に削除されます。記録・プロフィール・認証情報がすべて消えます。同じメールアドレスで再度新規登録できます。この操作は取り消せません。',
       [
         { text: 'キャンセル', style: 'cancel' },
         {
           text: '削除する',
           style: 'destructive',
           onPress: async () => {
-            await clearAllData();
-            Alert.alert('削除完了', 'データをすべて削除しました。アプリを再起動してください。');
+            const user = auth.currentUser;
+            if (!user) return;
+            try {
+              await deleteDoc(doc(db, 'users', user.uid));
+              await clearAllData();
+              await deleteUser(user);
+              // deleteUser により onAuthStateChanged が null になり AuthScreen へ自動遷移
+            } catch (e: any) {
+              if (e?.code === 'auth/requires-recent-login') {
+                Alert.alert(
+                  '再認証が必要です',
+                  '一度ログアウトして再ログインしてから、もう一度お試しください。'
+                );
+              } else {
+                Alert.alert('エラー', e?.message ?? '削除に失敗しました。');
+              }
+            }
           },
         },
       ]

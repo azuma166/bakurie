@@ -228,7 +228,7 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
   }
 
   return (
-    <View style={{ width: size, height: size }}>
+    <Animated.View style={{ width: size, height: size, transform: [{ scale: breathe }] }}>
       <Svg width={size} height={size} viewBox={`0 0 ${NATURAL} ${NATURAL}`}>
         <G transform={transform}>
           {/* Double body outline */}
@@ -343,6 +343,6 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
           })}
         </G>
       </Svg>
-    </View>
+    </Animated.View>
   );
 }

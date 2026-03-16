@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,9 +12,13 @@ const firebaseConfig = {
   appId: "1:995145649386:web:202f058afbc314acd5db93",
 };
 
-export const app = initializeApp(firebaseConfig);
+// Prevent "already initialized" error on hot reload
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Web uses browser default persistence; native uses AsyncStorage
+export { app };
+
+// Web: browser localStorage persistence (default)
+// Native: AsyncStorage persistence
 export const auth = Platform.OS === 'web'
   ? getAuth(app)
   : initializeAuth(app, {

@@ -18,7 +18,6 @@ export function useWakeData() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [records, setRecords] = useState<WakeRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [todayRecorded, setTodayRecorded] = useState(false);
   const [feedHues, setFeedHues] = useState<number[]>([]);
 
   const load = useCallback(async () => {
@@ -54,8 +53,6 @@ export function useWakeData() {
     setProfile(p);
     setRecords(r);
     setFeedHues(resolvedHues);
-    const today = formatDate(new Date());
-    setTodayRecorded(r.some(rec => rec.date === today));
     setLoading(false);
   }, []);
 
@@ -95,7 +92,6 @@ export function useWakeData() {
 
     setProfile(updated);
     setRecords(prev => [record, ...prev]);
-    setTodayRecorded(true);
     return record;
   }, [profile]);
 
@@ -117,7 +113,6 @@ export function useWakeData() {
     setProfile(updated);
     setRecords([]);
     setFeedHues([]);
-    setTodayRecorded(false);
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
@@ -138,6 +133,8 @@ export function useWakeData() {
 
     setProfile(updated);
   }, [profile]);
+
+  const todayRecorded = records.some(rec => rec.date === formatDate(new Date()));
 
   return { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
 }

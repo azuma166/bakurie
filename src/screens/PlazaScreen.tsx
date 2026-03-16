@@ -9,23 +9,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import BakuCanvas from '../components/BakuCanvas';
-import { getFollowRelation, getMockUserById, MOCK_USERS } from '../store/storage';
-import { MockUser } from '../types';
+import { getAllUsers, getFirestoreUser, FirestoreUser } from '../services/firestoreUser';
+import { auth } from '../config/firebase';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
-function BakuCard({ user, onPress }: { user: MockUser; onPress: () => void }) {
+function BakuCard({ user }: { user: FirestoreUser }) {
   const fragments = React.useMemo(
     () => generateFragments(Math.min(user.recordCount, 20)),
     [user.recordCount]
   );
   return (
-    <TouchableOpacity
-      style={[styles.card, user.hasWokenToday && styles.cardWoken]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.bakuThumb, user.hasWokenToday && styles.bakuThumbWoken]}>
+    <View style={[styles.card, user.hasWokenToday && styles.cardWoken]}>
+      <View style={styles.bakuThumb}>
         <BakuCanvas bakuType={user.bakuType} size={64} fragments={fragments} />
       </View>
       <Text style={[styles.cardName, user.hasWokenToday && styles.cardNameWoken]}>
@@ -35,25 +31,34 @@ function BakuCard({ user, onPress }: { user: MockUser; onPress: () => void }) {
       {user.hasWokenToday && (
         <Text style={styles.wokeLabel}>起きた</Text>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
 export default function PlazaScreen() {
-  const [followingUsers, setFollowingUsers] = useState<MockUser[]>([]);
+  const [followingUsers, setFollowingUsers] = useState<FirestoreUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const myUid = auth.currentUser?.uid ?? '';
 
   const load = useCallback(async () => {
-    const rel = await getFollowRelation();
-    const ids = new Set(rel.followingIds);
-    const users = Array.from(ids)
-      .map(id => getMockUserById(id))
-      .filter((u): u is MockUser => !!u);
-    // Sort: not woken first (still "in plaza"), then woken
-    users.sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
-    setFollowingUsers(users);
-    setLoading(false);
-  }, []);
+    setError(null);
+    try {
+      const [allUsers, me] = await Promise.all([
+        getAllUsers(),
+        myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
+      ]);
+      const followingIds = new Set(me?.followingIds ?? []);
+      const users = allUsers.filter(u => followingIds.has(u.uid));
+      users.sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
+      setFollowingUsers(users);
+    } catch (e: any) {
+      setError(e?.message ?? '読み込みに失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }, [myUid]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -61,6 +66,17 @@ export default function PlazaScreen() {
     return (
       <View style={styles.container}>
         <ActivityIndicator color="#2A2A2A" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Text style={{ color: '#E05C5C', textAlign: 'center', fontSize: 13 }}>{error}</Text>
+        <TouchableOpacity onPress={load} style={{ marginTop: 16 }}>
+          <Text style={{ color: '#2A2A2A', fontSize: 13 }}>再読み込み</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -83,7 +99,7 @@ export default function PlazaScreen() {
       ) : (
         <FlatList
           data={followingUsers}
-          keyExtractor={u => u.id}
+          keyExtractor={u => u.uid}
           numColumns={2}
           contentContainerStyle={styles.grid}
           ListHeaderComponent={
@@ -95,12 +111,7 @@ export default function PlazaScreen() {
               </View>
             ) : null
           }
-          renderItem={({ item }) => (
-            <BakuCard
-              user={item}
-              onPress={() => {}}
-            />
-          )}
+          renderItem={({ item }) => <BakuCard user={item} />}
         />
       )}
     </SafeAreaView>
@@ -175,9 +186,6 @@ const styles = StyleSheet.create({
     height: 64,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bakuThumbWoken: {
-    // grayscale effect via opacity on parent
   },
   cardName: {
     fontSize: 13,

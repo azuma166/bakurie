@@ -17,9 +17,8 @@ import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
 import { clearAllData } from '../store/storage';
 import { signOut, deleteUser } from 'firebase/auth';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { getFirestoreUser } from '../services/firestoreUser';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
@@ -71,15 +70,16 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
 
-  const loadRelation = useCallback(async () => {
+  useEffect(() => {
     const uid = auth.currentUser?.uid;
-    if (uid) {
-      const fp = await getFirestoreUser(uid);
-      setRelation({ followingIds: fp?.followingIds ?? [] });
-    }
+    if (!uid) return;
+    const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
+      if (snap.exists()) {
+        setRelation({ followingIds: snap.data().followingIds ?? [] });
+      }
+    });
+    return unsub;
   }, []);
-
-  useEffect(() => { loadRelation(); }, [loadRelation]);
 
   useEffect(() => {
     if (profile) {

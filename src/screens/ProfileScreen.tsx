@@ -61,14 +61,20 @@ export default function ProfileScreen() {
   }, [editName, editBio, updateProfile]);
 
   const handleReset = useCallback(() => {
-    Alert.alert(
-      '平均リセット',
-      '記録がすべて消え、新しいバクがやってきます。',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        { text: 'リセット', style: 'destructive', onPress: resetAverage },
-      ]
-    );
+    if (Platform.OS === 'web') {
+      if (window.confirm('平均リセット\n\n記録がすべて消え、新しいバクがやってきます。')) {
+        resetAverage();
+      }
+    } else {
+      Alert.alert(
+        '平均リセット',
+        '記録がすべて消え、新しいバクがやってきます。',
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: 'リセット', style: 'destructive', onPress: resetAverage },
+        ]
+      );
+    }
   }, [resetAverage]);
 
 

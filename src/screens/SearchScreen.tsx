@@ -23,6 +23,35 @@ import { generateFragments } from '../utils/fragments';
 
 type Tab = 'search' | 'following';
 
+// ---------- color helpers (同 PlazaScreen) ----------
+
+function uidToSeed(uid: string): number {
+  return uid.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) % 360, 0);
+}
+
+function deriveUserHues(uid: string, recordCount: number): number[] {
+  const seed = uidToSeed(uid);
+  const count = Math.min(recordCount, 6);
+  return Array.from({ length: count }, (_, i) => (seed + i * 47) % 360);
+}
+
+function FragmentDots({ hues }: { hues: number[] }) {
+  if (hues.length === 0) return null;
+  return (
+    <View style={dotStyles.row}>
+      {hues.map((hue, i) => (
+        <View key={i} style={[dotStyles.dot, { backgroundColor: `hsl(${hue}, 55%, 68%)` }]} />
+      ))}
+    </View>
+  );
+}
+const dotStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 3, marginTop: 2 },
+  dot: { width: 5, height: 5, transform: [{ rotate: '45deg' }] },
+});
+
+// ----------------------------------------------------
+
 function UserRow({
   user,
   isFollowing,
@@ -32,12 +61,16 @@ function UserRow({
   isFollowing: boolean;
   onToggle: () => void;
 }) {
+  const hues = deriveUserHues(user.uid, user.recordCount);
   const fragments = React.useMemo(
-    () => generateFragments(Math.min(user.recordCount, 20)),
-    [user.recordCount]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => generateFragments(Math.min(user.recordCount, 20), hues),
+    [user.recordCount, user.uid]
   );
+  const accentColor = hues.length > 0 ? `hsl(${hues[0]}, 40%, 82%)` : '#E8E5E0';
+
   return (
-    <View style={styles.userRow}>
+    <View style={[styles.userRow, { borderLeftWidth: 3, borderLeftColor: accentColor }]}>
       <View style={styles.bakuMini}>
         <BakuCanvas bakuType={user.bakuType} size={56} fragments={fragments} />
       </View>
@@ -45,7 +78,7 @@ function UserRow({
         <Text style={styles.userName}>{user.name}</Text>
         {user.bio ? <Text style={styles.userBio} numberOfLines={1}>{user.bio}</Text> : null}
         <Text style={styles.userEma}>平均 {minutesToTime(user.emaMinutes)}</Text>
-        <Text style={styles.userRecord}>{user.recordCount}日記録</Text>
+        <FragmentDots hues={hues} />
       </View>
       <TouchableOpacity
         style={[styles.followBtn, isFollowing && styles.followBtnDone]}
@@ -214,7 +247,7 @@ const styles = StyleSheet.create({
   userName: { fontSize: 14, color: '#2A2A2A', fontWeight: '500' },
   userBio: { fontSize: 11, color: '#888' },
   userEma: { fontSize: 11, color: '#BCBAB7' },
-  userRecord: { fontSize: 10, color: '#C0BDB8' },
+
   followBtn: {
     paddingVertical: 6, paddingHorizontal: 14,
     borderRadius: 16, backgroundColor: '#2A2A2A',

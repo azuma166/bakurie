@@ -183,10 +183,14 @@ type Props = {
 const STROKE = '#2A2A2A';
 const SW = 1.8;
 
+// Natural canvas size — geometry is always drawn in this coordinate space
+const NATURAL = 260;
+
 export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Props) {
   const cfg = useMemo(() => buildConfig(bakuType), [bakuType]);
-  const cx = size / 2;
-  const cy = size / 2 + 10;
+  // Always use the natural centre so geometry stays consistent regardless of size
+  const cx = NATURAL / 2;
+  const cy = NATURAL / 2 + 10;
 
   // Breathing animation
   const breathe = useRef(new Animated.Value(1)).current;
@@ -225,7 +229,7 @@ export default function BakuCanvas({ bakuType, size = 260, fragments = [] }: Pro
 
   return (
     <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size}>
+      <Svg width={size} height={size} viewBox={`0 0 ${NATURAL} ${NATURAL}`}>
         <G transform={transform}>
           {/* Double body outline */}
           {cfg.doubleBody && (

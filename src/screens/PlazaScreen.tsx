@@ -12,8 +12,13 @@ import BakuCanvas from '../components/BakuCanvas';
 import { getFollowRelation, getMockUserById, MOCK_USERS } from '../store/storage';
 import { MockUser } from '../types';
 import { minutesToTime } from '../utils/ema';
+import { generateFragments } from '../utils/fragments';
 
 function BakuCard({ user, onPress }: { user: MockUser; onPress: () => void }) {
+  const fragments = React.useMemo(
+    () => generateFragments(Math.min(user.recordCount, 20)),
+    [user.recordCount]
+  );
   return (
     <TouchableOpacity
       style={[styles.card, user.hasWokenToday && styles.cardWoken]}
@@ -21,7 +26,7 @@ function BakuCard({ user, onPress }: { user: MockUser; onPress: () => void }) {
       activeOpacity={0.8}
     >
       <View style={[styles.bakuThumb, user.hasWokenToday && styles.bakuThumbWoken]}>
-        <BakuCanvas bakuType={user.bakuType} size={64} />
+        <BakuCanvas bakuType={user.bakuType} size={64} fragments={fragments} />
       </View>
       <Text style={[styles.cardName, user.hasWokenToday && styles.cardNameWoken]}>
         {user.name}

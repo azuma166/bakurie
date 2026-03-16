@@ -28,4 +28,5 @@ export type MockUser = {
   bakuType: number;
   hasWokenToday: boolean;
   emaMinutes: number;
+  recordCount: number;
 };

@@ -116,6 +116,7 @@ export const MOCK_USERS: MockUser[] = [
     bakuType: 3,
     hasWokenToday: false,
     emaMinutes: 6 * 60 + 30,
+    recordCount: 14,
   },
   {
     id: 'mock2',
@@ -124,6 +125,7 @@ export const MOCK_USERS: MockUser[] = [
     bakuType: 7,
     hasWokenToday: true,
     emaMinutes: 7 * 60 + 15,
+    recordCount: 8,
   },
   {
     id: 'mock3',
@@ -132,6 +134,7 @@ export const MOCK_USERS: MockUser[] = [
     bakuType: 12,
     hasWokenToday: false,
     emaMinutes: 5 * 60 + 45,
+    recordCount: 20,
   },
   {
     id: 'mock4',
@@ -140,6 +143,7 @@ export const MOCK_USERS: MockUser[] = [
     bakuType: 16,
     hasWokenToday: false,
     emaMinutes: 8 * 60,
+    recordCount: 5,
   },
   {
     id: 'mock5',
@@ -148,6 +152,7 @@ export const MOCK_USERS: MockUser[] = [
     bakuType: 5,
     hasWokenToday: true,
     emaMinutes: 6 * 60,
+    recordCount: 11,
   },
 ];
 

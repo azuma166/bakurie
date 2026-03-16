@@ -88,7 +88,10 @@ const DEFAULT_FOLLOW: FollowRelation = {
 
 export async function getFollowRelation(): Promise<FollowRelation> {
   const raw = await AsyncStorage.getItem(KEYS.FOLLOW_RELATION);
-  return raw ? JSON.parse(raw) : DEFAULT_FOLLOW;
+  if (!raw) return DEFAULT_FOLLOW;
+  const parsed = JSON.parse(raw);
+  // Migration: remove legacy followerIds field
+  return { followingIds: parsed.followingIds ?? [] };
 }
 
 export async function followUser(userId: string): Promise<void> {

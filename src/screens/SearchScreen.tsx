@@ -18,7 +18,7 @@ import {
   FirestoreUser,
 } from '../services/firestoreUser';
 import { auth } from '../config/firebase';
-import { minutesToTime, formatDate } from '../utils/ema';
+import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
 type Tab = 'search' | 'following';
@@ -97,12 +97,7 @@ export default function SearchScreen() {
         getAllUsers(),
         myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
       ]);
-      const today = formatDate(new Date());
-      setAllUsers(
-        users
-          .filter(u => u.uid !== myUid && !!u.uid)
-          .map(u => ({ ...u, hasWokenToday: u.hasWokenToday && u.lastWakeDate === today }))
-      );
+      setAllUsers(users.filter(u => u.uid !== myUid && !!u.uid));
       setFollowingIds(me?.followingIds ?? []);
     } catch (e: any) {
       console.error('SearchScreen load error:', e);

@@ -78,11 +78,7 @@ export default function PlazaScreen() {
         myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
       ]);
       const followingIds = new Set(me?.followingIds ?? []);
-      const today = formatDate(new Date());
-      const users = allUsers
-        .filter(u => followingIds.has(u.uid))
-        .map(u => ({ ...u, hasWokenToday: u.hasWokenToday && u.lastWakeDate === today }));
-      users.sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
+      const users = allUsers.filter(u => followingIds.has(u.uid));
       setFollowingUsers(users);
     } catch (e: any) {
       setError(e?.message ?? '読み込みに失敗しました');
@@ -112,8 +108,12 @@ export default function PlazaScreen() {
     );
   }
 
-  const awake = followingUsers.filter(u => !u.hasWokenToday);
-  const slept = followingUsers.filter(u => u.hasWokenToday);
+  const today = formatDate(new Date());
+  const displayUsers = followingUsers
+    .map(u => ({ ...u, hasWokenToday: u.hasWokenToday && u.lastWakeDate === today }))
+    .sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
+  const awake = displayUsers.filter(u => !u.hasWokenToday);
+  const slept = displayUsers.filter(u => u.hasWokenToday);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -129,7 +129,7 @@ export default function PlazaScreen() {
         </View>
       ) : (
         <FlatList
-          data={followingUsers}
+          data={displayUsers}
           keyExtractor={u => u.uid}
           numColumns={2}
           contentContainerStyle={styles.grid}

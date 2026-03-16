@@ -76,7 +76,7 @@ export default function SearchScreen() {
         getAllUsers(),
         myUid ? getFirestoreUser(myUid) : Promise.resolve(null),
       ]);
-      setAllUsers(users.filter(u => u.uid !== myUid));
+      setAllUsers(users.filter(u => u.uid !== myUid && !!u.uid));
       setFollowingIds(me?.followingIds ?? []);
     } catch (e: any) {
       console.error('SearchScreen load error:', e);
@@ -102,7 +102,7 @@ export default function SearchScreen() {
 
   const normalizedQuery = query.trim().toLowerCase();
   const searchResults = normalizedQuery
-    ? allUsers.filter(u => u.name.toLowerCase().includes(normalizedQuery))
+    ? allUsers.filter(u => (u.name ?? '').toLowerCase().includes(normalizedQuery))
     : allUsers;
 
   const followingUsers = allUsers.filter(u => followingIds.includes(u.uid));
@@ -164,7 +164,11 @@ export default function SearchScreen() {
       <ScrollView contentContainerStyle={styles.list}>
         {displayList.length === 0 ? (
           <Text style={styles.emptyText}>
-            {tab === 'search' ? '見つかりませんでした' : 'まだいません'}
+            {tab === 'search'
+              ? normalizedQuery
+                ? `"${normalizedQuery}" に一致するユーザーが見つかりません`
+                : 'まだ他のユーザーがいません'
+              : 'まだいません'}
           </Text>
         ) : (
           displayList.map(item => (

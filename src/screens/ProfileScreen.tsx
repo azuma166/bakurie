@@ -15,8 +15,6 @@ import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
 import { getFollowRelation, clearAllData } from '../store/storage';
-import { signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 
@@ -69,13 +67,6 @@ export default function ProfileScreen() {
     );
   }, [resetAverage]);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      await signOut(auth);
-    } catch {
-      Alert.alert('エラー', 'ログアウトに失敗しました。再度お試しください。');
-    }
-  }, []);
 
   const handleClearAll = useCallback(() => {
     Alert.alert(
@@ -207,16 +198,12 @@ export default function ProfileScreen() {
 
         {/* Settings */}
         <Text style={styles.sectionTitle}>設定</Text>
-        <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
-          <Text style={styles.settingText}>ログアウト</Text>
-          <Text style={styles.settingArrow}>›</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.settingRow} onPress={handleReset}>
           <Text style={styles.settingText}>平均リセット（新しいバクを迎える）</Text>
           <Text style={styles.settingArrow}>›</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.settingRow} onPress={handleClearAll}>
-          <Text style={[styles.settingText, { color: '#A08080' }]}>データをすべて削除</Text>
+          <Text style={[styles.settingText, { color: '#A08080' }]}>データの初期化</Text>
           <Text style={styles.settingArrow}>›</Text>
         </TouchableOpacity>
       </ScrollView>

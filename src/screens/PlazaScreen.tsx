@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import BakuCanvas from '../components/BakuCanvas';
 import { getFollowRelation, getMockUserById, MOCK_USERS } from '../store/storage';
 import { MockUser } from '../types';
@@ -36,7 +35,6 @@ function BakuCard({ user, onPress }: { user: MockUser; onPress: () => void }) {
 }
 
 export default function PlazaScreen() {
-  const navigation = useNavigation<any>();
   const [followingUsers, setFollowingUsers] = useState<MockUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -90,7 +88,7 @@ export default function PlazaScreen() {
         renderItem={({ item }) => (
           <BakuCard
             user={item}
-            onPress={() => navigation.navigate('Profile')}
+            onPress={() => {}}
           />
         )}
       />

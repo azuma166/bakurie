@@ -22,7 +22,7 @@ import { minutesToTime } from '../utils/ema';
 
 export default function ProfileScreen() {
   const { profile, records, loading, resetAverage, updateProfile } = useWakeData();
-  const [relation, setRelation] = useState<FollowRelation>({ followingIds: [], followerIds: [] });
+  const [relation, setRelation] = useState<FollowRelation>({ followingIds: [] });
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
@@ -69,24 +69,12 @@ export default function ProfileScreen() {
     );
   }, [resetAverage]);
 
-  const handleLogout = useCallback(() => {
-    Alert.alert(
-      'ログアウト',
-      'ログアウトしますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: 'ログアウト',
-          onPress: async () => {
-            try {
-              await signOut(auth);
-            } catch {
-              Alert.alert('エラー', 'ログアウトに失敗しました。再度お試しください。');
-            }
-          },
-        },
-      ]
-    );
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+    } catch {
+      Alert.alert('エラー', 'ログアウトに失敗しました。再度お試しください。');
+    }
   }, []);
 
   const handleClearAll = useCallback(() => {

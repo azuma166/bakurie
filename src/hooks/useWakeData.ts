@@ -52,6 +52,8 @@ export function useWakeData() {
     setFeedHues(prev => {
       const newHues = [hue, ...prev].slice(0, 20);
       saveFeedHues(newHues); // persist async, fire and forget
+      const uid = auth.currentUser?.uid;
+      if (uid) updateFirestoreUser(uid, { feedHues: newHues }); // sync to Firestore
       return newHues;
     });
   }, []);
@@ -94,6 +96,7 @@ export function useWakeData() {
         recordCount: 0,
         hasWokenToday: false,
         lastWakeDate: '',
+        feedHues: [],
       });
     }
 

@@ -23,18 +23,6 @@ import { generateFragments } from '../utils/fragments';
 
 type Tab = 'search' | 'following';
 
-// ---------- color helpers (同 PlazaScreen) ----------
-
-function uidToSeed(uid: string): number {
-  return uid.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) % 360, 0);
-}
-
-function deriveUserHues(uid: string, recordCount: number): number[] {
-  const seed = uidToSeed(uid);
-  const count = Math.min(recordCount, 6);
-  return Array.from({ length: count }, (_, i) => (seed + i * 47) % 360);
-}
-
 function FragmentDots({ hues }: { hues: number[] }) {
   if (hues.length === 0) return null;
   return (
@@ -61,11 +49,11 @@ function UserRow({
   isFollowing: boolean;
   onToggle: () => void;
 }) {
-  const hues = deriveUserHues(user.uid, user.recordCount);
+  const hues = user.feedHues ?? [];
   const fragments = React.useMemo(
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     () => generateFragments(Math.min(user.recordCount, 20), hues),
-    [user.recordCount, user.uid]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user.recordCount, user.uid, user.feedHues]
   );
   const accentColor = hues.length > 0 ? `hsl(${hues[0]}, 40%, 82%)` : '#E8E5E0';
 

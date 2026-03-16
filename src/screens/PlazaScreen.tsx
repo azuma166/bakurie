@@ -14,20 +14,6 @@ import { auth } from '../config/firebase';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
-// ---------- color helpers ----------
-
-/** uid（文字列）から数値シードへ変換 */
-function uidToSeed(uid: string): number {
-  return uid.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) % 360, 0);
-}
-
-/** ユーザーの uid + recordCount から固有のかけら hues を導出（決定論的） */
-function deriveUserHues(uid: string, recordCount: number): number[] {
-  const seed = uidToSeed(uid);
-  const count = Math.min(recordCount, 8);
-  return Array.from({ length: count }, (_, i) => (seed + i * 47) % 360);
-}
-
 /** ダイヤモンドドット（各ユーザーのかけら色パレット） */
 function FragmentDots({ hues, max = 5 }: { hues: number[]; max?: number }) {
   if (hues.length === 0) return null;
@@ -50,16 +36,14 @@ const dotStyles = StyleSheet.create({
 // -----------------------------------
 
 function BakuCard({ user }: { user: FirestoreUser }) {
-  const hues = deriveUserHues(user.uid, user.recordCount);
+  const hues = user.feedHues ?? [];
 
   const fragments = React.useMemo(
     () => generateFragments(Math.min(user.recordCount, 20), hues),
-    // hues is derived deterministically from uid+recordCount, safe to ignore exhaustive deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user.recordCount, user.uid]
+    [user.recordCount, user.uid, user.feedHues]
   );
 
-  // Primary accent from the first derived hue
   const borderColor = hues.length > 0 ? `hsl(${hues[0]}, 40%, 82%)` : '#E8E5E0';
 
   return (

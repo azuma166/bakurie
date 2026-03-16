@@ -18,6 +18,7 @@ export type FirestoreUser = {
   hasWokenToday: boolean;
   lastWakeDate: string;
   followingIds: string[];
+  feedHues: number[];
 };
 
 const USERS = 'users';
@@ -36,6 +37,7 @@ export async function createUserInFirestore(uid: string, initial: Partial<Firest
       hasWokenToday: false,
       lastWakeDate: '',
       followingIds: [],
+      feedHues: [],
     });
   }
 }

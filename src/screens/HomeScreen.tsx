@@ -23,22 +23,22 @@ export default function HomeScreen() {
   const [absorbing, setAbsorbing] = useState(false);
   const absorbAnim = useRef(new Animated.Value(0)).current;
 
-  // 食べさせるたびに変わる新しいかけらの色（hue 0〜360）
-  const [colorSeed, setColorSeed] = useState(() => Math.floor(Math.random() * 360));
-  // 吸い込みパーティクルの色もこのhueに連動
+  // 各かけらの hue を個別に記憶（index 0 = 最新）。既存のかけらの色は変わらない
+  const [feedHues, setFeedHues] = useState<number[]>([]);
+  // 吸い込みパーティクルの色（今回のフィードの hue）
   const [feedHue, setFeedHue] = useState(200);
 
   const fragments = useMemo(
-    () => generateFragments(Math.min(records.length, 20), colorSeed),
-    [records.length, colorSeed]
+    () => generateFragments(Math.min(records.length, 20), feedHues),
+    [records.length, feedHues]
   );
 
   const handleFeed = useCallback(async () => {
     if (absorbing || !profile) return;
 
-    const newSeed = Math.floor(Math.random() * 360);
-    setColorSeed(newSeed);
-    setFeedHue(newSeed);
+    const newHue = Math.floor(Math.random() * 360);
+    setFeedHues(prev => [newHue, ...prev]); // 先頭に追加（index 0 = 最新）
+    setFeedHue(newHue);
     setAbsorbing(true);
 
     absorbAnim.setValue(0);

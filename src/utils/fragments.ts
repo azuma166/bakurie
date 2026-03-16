@@ -4,9 +4,10 @@ import { DreamFragment } from '../components/BakuCanvas';
  * Generate dream fragments distributed inside baku body.
  * Recent records → larger, brighter, more centered.
  * Old records → smaller, faded, towards edges.
- * colorOffset shifts the hue of the newest fragment each feed.
+ * hues[i] is the per-fragment hue (index 0 = newest). Existing fragments
+ * always keep their original color across subsequent feeds.
  */
-export function generateFragments(recordCount: number, colorOffset = 0): DreamFragment[] {
+export function generateFragments(recordCount: number, hues: number[] = []): DreamFragment[] {
   if (recordCount === 0) return [];
 
   const fragments: DreamFragment[] = [];
@@ -21,8 +22,8 @@ export function generateFragments(recordCount: number, colorOffset = 0): DreamFr
     const x = Math.cos(angle) * radius * (0.5 + Math.random() * 0.5);
     const y = Math.sin(angle) * radius * (0.5 + Math.random() * 0.5);
 
-    // Color: newest fragment uses colorOffset, older ones spread by fixed step
-    const hue = (i * 47 + colorOffset) % 360;
+    // Each fragment keeps its own hue; fallback to golden-angle spread
+    const hue = hues[i] ?? (i * 47 + 200) % 360;
     const saturation = isNew ? 70 : 40 - ageRatio * 20;
     const lightness = 60 + ageRatio * 10;
     const size = isNew ? 8 + Math.random() * 8 : 3 + (1 - ageRatio) * 3;

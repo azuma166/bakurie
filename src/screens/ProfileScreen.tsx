@@ -15,6 +15,8 @@ import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
 import { getFollowRelation, clearAllData } from '../store/storage';
+import { signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
 
@@ -204,6 +206,10 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.settingRow} onPress={handleClearAll}>
           <Text style={[styles.settingText, { color: '#A08080' }]}>データの初期化</Text>
+          <Text style={styles.settingArrow}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.settingRow} onPress={() => signOut(auth)}>
+          <Text style={[styles.settingText, { color: '#A08080' }]}>ログアウト</Text>
           <Text style={styles.settingArrow}>›</Text>
         </TouchableOpacity>
       </ScrollView>

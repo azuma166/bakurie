@@ -20,6 +20,7 @@ export function useWakeData() {
   const [loading, setLoading] = useState(true);
   const [feedHues, setFeedHues] = useState<number[]>([]);
   const [firestoreWokenToday, setFirestoreWokenToday] = useState(false);
+  const [recordCount, setRecordCount] = useState(0);
 
   const load = useCallback(async () => {
     const uid = auth.currentUser?.uid;
@@ -61,8 +62,13 @@ export function useWakeData() {
           setFirestoreWokenToday(fp.hasWokenToday && fp.lastWakeDate === today);
         }
 
+        // Firestore recordCount is authoritative (local records are cleared on logout)
+        setRecordCount(Math.max(r.length, fp.recordCount ?? 0));
+
         await saveUserProfile(p);
       }
+    } else {
+      setRecordCount(r.length);
     }
 
     setProfile(p);
@@ -107,6 +113,7 @@ export function useWakeData() {
 
     setProfile(updated);
     setRecords(prev => [record, ...prev]);
+    setRecordCount(prev => prev + 1);
     setFirestoreWokenToday(true);
     return record;
   }, [profile]);
@@ -129,6 +136,7 @@ export function useWakeData() {
     setProfile(updated);
     setRecords([]);
     setFeedHues([]);
+    setRecordCount(0);
     setFirestoreWokenToday(false);
   }, []);
 
@@ -153,5 +161,5 @@ export function useWakeData() {
 
   const todayRecorded = firestoreWokenToday || records.some(rec => rec.date === formatDate(new Date()));
 
-  return { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
+  return { profile, records, recordCount, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
 }

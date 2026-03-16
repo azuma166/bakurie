@@ -64,7 +64,7 @@ const dotStyles = StyleSheet.create({
 // -------------------------------------------
 
 export default function ProfileScreen() {
-  const { profile, records, loading, feedHues, resetAverage, updateProfile } = useWakeData();
+  const { profile, recordCount, loading, feedHues, resetAverage, updateProfile } = useWakeData();
   const [relation, setRelation] = useState<FollowRelation>({ followingIds: [] });
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -170,7 +170,7 @@ export default function ProfileScreen() {
   const primaryAccent = feedHues.length > 0 ? accentHsl(feedHues[0], 55, 52) : DEFAULT_ACCENT;
   const stepBadgeColors = badgeColors(feedHues, 5);
 
-  const fragments = generateFragments(Math.min(records.length, 20), feedHues);
+  const fragments = generateFragments(feedHues.length, feedHues);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -246,7 +246,7 @@ export default function ProfileScreen() {
         {/* Wake stats */}
         <View style={styles.wakeStats}>
           <View style={styles.wakeStatItem}>
-            <Text style={[styles.wakeStatNum, { color: primaryAccent }]}>{records.length}</Text>
+            <Text style={[styles.wakeStatNum, { color: primaryAccent }]}>{recordCount}</Text>
             <Text style={styles.wakeStatLabel}>累計記録日数</Text>
           </View>
           <View style={styles.wakeStatItem}>

@@ -45,8 +45,7 @@ export default function PlazaScreen() {
 
   const load = useCallback(async () => {
     const rel = await getFollowRelation();
-    // Include default following + any additionally followed mock users
-    const ids = new Set([...rel.followingIds, 'mock1', 'mock2', 'mock3', 'mock4', 'mock5']);
+    const ids = new Set(rel.followingIds);
     const users = Array.from(ids)
       .map(id => getMockUserById(id))
       .filter((u): u is MockUser => !!u);
@@ -76,27 +75,34 @@ export default function PlazaScreen() {
         <Text style={styles.subtitle}>まだ眠っているバクたち</Text>
       </View>
 
-      <FlatList
-        data={followingUsers}
-        keyExtractor={u => u.id}
-        numColumns={2}
-        contentContainerStyle={styles.grid}
-        ListHeaderComponent={
-          slept.length > 0 ? (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>
-                広場にいる: {awake.length}　今日起きた: {slept.length}
-              </Text>
-            </View>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <BakuCard
-            user={item}
-            onPress={() => {}}
-          />
-        )}
-      />
+      {followingUsers.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>まだ誰もいません</Text>
+          <Text style={styles.emptyHint}>検索タブからユーザーをフォローしよう</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={followingUsers}
+          keyExtractor={u => u.id}
+          numColumns={2}
+          contentContainerStyle={styles.grid}
+          ListHeaderComponent={
+            slept.length > 0 ? (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionLabel}>
+                  広場にいる: {awake.length}　今日起きた: {slept.length}
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <BakuCard
+              user={item}
+              onPress={() => {}}
+            />
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -125,6 +131,22 @@ const styles = StyleSheet.create({
   grid: {
     paddingHorizontal: 12,
     paddingBottom: 20,
+  },
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 60,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: '#A0A0A0',
+    fontWeight: '300',
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: '#C0BDB8',
+    marginTop: 8,
   },
   sectionHeader: {
     paddingVertical: 8,

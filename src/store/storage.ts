@@ -84,7 +84,7 @@ export async function resetEMA(newBakuType?: number): Promise<UserProfile> {
 
 const DEFAULT_FOLLOW: FollowRelation = {
   followingIds: [],
-  followerIds: ['mock1', 'mock2'],
+  followerIds: [],
 };
 
 export async function getFollowRelation(): Promise<FollowRelation> {

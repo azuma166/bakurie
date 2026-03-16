@@ -5,8 +5,6 @@ import {
   updateDoc,
   collection,
   getDocs,
-  query,
-  orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -52,8 +50,9 @@ export async function updateFirestoreUser(uid: string, data: Partial<FirestoreUs
 }
 
 export async function getAllUsers(): Promise<FirestoreUser[]> {
-  const snap = await getDocs(query(collection(db, USERS), orderBy('name')));
-  return snap.docs.map(d => d.data() as FirestoreUser);
+  const snap = await getDocs(collection(db, USERS));
+  const users = snap.docs.map(d => d.data() as FirestoreUser);
+  return users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 }
 
 export async function followUserFirestore(myUid: string, targetUid: string): Promise<void> {

@@ -93,8 +93,9 @@ export default function SearchScreen() {
     }
   }, [myUid, followingIds]);
 
-  const searchResults = query.trim()
-    ? allUsers.filter(u => u.name.includes(query.trim()))
+  const normalizedQuery = query.trim().toLowerCase();
+  const searchResults = normalizedQuery
+    ? allUsers.filter(u => u.name.toLowerCase().includes(normalizedQuery))
     : allUsers;
 
   const followingUsers = allUsers.filter(u => followingIds.includes(u.uid));

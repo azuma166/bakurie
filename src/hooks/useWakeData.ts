@@ -19,6 +19,7 @@ export function useWakeData() {
   const [records, setRecords] = useState<WakeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedHues, setFeedHues] = useState<number[]>([]);
+  const [firestoreWokenToday, setFirestoreWokenToday] = useState(false);
 
   const load = useCallback(async () => {
     const uid = auth.currentUser?.uid;
@@ -55,6 +56,9 @@ export function useWakeData() {
         const today = formatDate(new Date());
         if (fp.hasWokenToday && fp.lastWakeDate !== today) {
           await updateFirestoreUser(uid, { hasWokenToday: false });
+          setFirestoreWokenToday(false);
+        } else {
+          setFirestoreWokenToday(fp.hasWokenToday && fp.lastWakeDate === today);
         }
 
         await saveUserProfile(p);
@@ -103,6 +107,7 @@ export function useWakeData() {
 
     setProfile(updated);
     setRecords(prev => [record, ...prev]);
+    setFirestoreWokenToday(true);
     return record;
   }, [profile]);
 
@@ -124,6 +129,7 @@ export function useWakeData() {
     setProfile(updated);
     setRecords([]);
     setFeedHues([]);
+    setFirestoreWokenToday(false);
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
@@ -145,7 +151,7 @@ export function useWakeData() {
     setProfile(updated);
   }, [profile]);
 
-  const todayRecorded = records.some(rec => rec.date === formatDate(new Date()));
+  const todayRecorded = firestoreWokenToday || records.some(rec => rec.date === formatDate(new Date()));
 
   return { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
 }

@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
@@ -19,6 +19,7 @@ import {
 } from '../store/storage';
 import { MockUser, FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
+import { generateFragments } from '../utils/fragments';
 
 type Tab = 'search' | 'following';
 
@@ -31,10 +32,14 @@ function UserRow({
   isFollowing: boolean;
   onToggle: () => void;
 }) {
+  const fragments = React.useMemo(
+    () => generateFragments(Math.min(user.recordCount, 20)),
+    [user.recordCount]
+  );
   return (
     <View style={styles.userRow}>
       <View style={styles.bakuMini}>
-        <BakuCanvas bakuType={user.bakuType} size={60} />
+        <BakuCanvas bakuType={user.bakuType} size={56} fragments={fragments} />
       </View>
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.name}</Text>
@@ -86,8 +91,7 @@ export default function SearchScreen() {
     .map(id => getMockUserById(id))
     .filter((u): u is MockUser => !!u);
 
-  const displayList: MockUser[] =
-    tab === 'search' ? searchResults : followingUsers;
+  const displayList: MockUser[] = tab === 'search' ? searchResults : followingUsers;
 
   if (loading) {
     return (
@@ -132,23 +136,22 @@ export default function SearchScreen() {
         </View>
       )}
 
-      <FlatList
-        data={displayList}
-        keyExtractor={u => u.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
+      <ScrollView contentContainerStyle={styles.list}>
+        {displayList.length === 0 ? (
           <Text style={styles.emptyText}>
             {tab === 'search' ? '見つかりませんでした' : 'まだいません'}
           </Text>
-        }
-        renderItem={({ item }) => (
-          <UserRow
-            user={item}
-            isFollowing={relation.followingIds.includes(item.id)}
-            onToggle={() => handleToggleFollow(item.id)}
-          />
+        ) : (
+          displayList.map(item => (
+            <UserRow
+              key={item.id}
+              user={item}
+              isFollowing={relation.followingIds.includes(item.id)}
+              onToggle={() => handleToggleFollow(item.id)}
+            />
+          ))
         )}
-      />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -220,8 +223,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F0EDE8',
   },
   bakuMini: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },

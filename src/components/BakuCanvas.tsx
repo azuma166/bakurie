@@ -1,6 +1,6 @@
 /**
  * BakuCanvas – D-2型バクの描画コンポーネント
- * @shopify/react-native-skia v2 + react-native-reanimated v3
+ * @shopify/react-native-skia 1.5.3
  */
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
@@ -10,15 +10,6 @@ import {
   Skia,
   Group,
 } from '@shopify/react-native-skia';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  useDerivedValue,
-  withRepeat,
-  withTiming,
-  Easing,
-  useAnimatedProps,
-} from 'react-native-reanimated';
 
 // ----------------------------------------------------------------
 // Types

@@ -69,6 +69,26 @@ export default function ProfileScreen() {
     );
   }, [resetAverage]);
 
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'ログアウト',
+      'ログアウトしますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'ログアウト',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+            } catch {
+              Alert.alert('エラー', 'ログアウトに失敗しました。再度お試しください。');
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   const handleClearAll = useCallback(() => {
     Alert.alert(
       'データをすべて削除',
@@ -199,7 +219,7 @@ export default function ProfileScreen() {
 
         {/* Settings */}
         <Text style={styles.sectionTitle}>設定</Text>
-        <TouchableOpacity style={styles.settingRow} onPress={() => signOut(auth)}>
+        <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
           <Text style={styles.settingText}>ログアウト</Text>
           <Text style={styles.settingArrow}>›</Text>
         </TouchableOpacity>

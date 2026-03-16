@@ -12,13 +12,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bakurie.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F7F4EF",
         "foregroundImage": "./assets/adaptive-icon.png"
-      }
+      },
+      "package": "com.bakurie.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"

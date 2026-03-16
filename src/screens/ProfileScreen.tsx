@@ -129,9 +129,10 @@ export default function ProfileScreen() {
       const user = auth.currentUser;
       if (!user) return;
       try {
+        // deleteUser を先に実行し、失敗した場合はデータを変更しない
+        await deleteUser(user);
         await deleteDoc(doc(db, 'users', user.uid));
         await clearAllData();
-        await deleteUser(user);
       } catch (e: any) {
         if (e?.code === 'auth/requires-recent-login') {
           Alert.alert('再認証が必要です', '一度ログアウトして再ログインしてから、もう一度お試しください。');

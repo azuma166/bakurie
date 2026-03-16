@@ -12,7 +12,7 @@ import {
 import { UserProfile, WakeRecord } from '../types';
 import { timeToMinutes, formatDate } from '../utils/ema';
 import { auth } from '../config/firebase';
-import { updateFirestoreUser, getFirestoreUser } from '../services/firestoreUser';
+import { updateFirestoreUser, getFirestoreUser, createUserInFirestore } from '../services/firestoreUser';
 
 export function useWakeData() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -27,7 +27,18 @@ export function useWakeData() {
     // Sync fields from Firestore (source of truth)
     let resolvedHues = localHues;
     if (uid) {
-      const fp = await getFirestoreUser(uid);
+      let fp = await getFirestoreUser(uid);
+
+      if (!fp) {
+        // 認証済みユーザーのFirestoreドキュメントが存在しない場合（コンソールからの削除や
+        // 部分的な削除失敗など）は、ローカルデータを使わず新規ドキュメントを作成して
+        // クリーンな状態に戻す
+        await createUserInFirestore(uid, { name: p.name });
+        await saveFeedHues([]);
+        resolvedHues = [];
+        fp = await getFirestoreUser(uid);
+      }
+
       if (fp) {
         p.bakuType = fp.bakuType;
         p.emaMinutes = fp.emaMinutes;

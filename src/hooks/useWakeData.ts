@@ -6,6 +6,8 @@ import {
   updateEMA,
   resetEMA,
   saveUserProfile,
+  getFeedHues,
+  saveFeedHues,
 } from '../store/storage';
 import { UserProfile, WakeRecord } from '../types';
 import { timeToMinutes, formatDate } from '../utils/ema';
@@ -17,10 +19,11 @@ export function useWakeData() {
   const [records, setRecords] = useState<WakeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayRecorded, setTodayRecorded] = useState(false);
+  const [feedHues, setFeedHues] = useState<number[]>([]);
 
   const load = useCallback(async () => {
     const uid = auth.currentUser?.uid;
-    const [p, r] = await Promise.all([getUserProfile(), getWakeRecords()]);
+    const [p, r, hues] = await Promise.all([getUserProfile(), getWakeRecords(), getFeedHues()]);
 
     // Sync bakuType and emaMinutes from Firestore if available
     if (uid) {
@@ -36,12 +39,22 @@ export function useWakeData() {
 
     setProfile(p);
     setRecords(r);
+    setFeedHues(hues);
     const today = formatDate(new Date());
     setTodayRecorded(r.some(rec => rec.date === today));
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Add a new hue to the front of the list (newest first). Max 20 entries.
+  const addFeedHue = useCallback((hue: number) => {
+    setFeedHues(prev => {
+      const newHues = [hue, ...prev].slice(0, 20);
+      saveFeedHues(newHues); // persist async, fire and forget
+      return newHues;
+    });
+  }, []);
 
   const recordWake = useCallback(async () => {
     if (!profile) return null;
@@ -71,7 +84,7 @@ export function useWakeData() {
   }, [profile]);
 
   const resetAverage = useCallback(async () => {
-    const updated = await resetEMA();
+    const updated = await resetEMA(); // also clears FEED_HUES in storage
 
     const uid = auth.currentUser?.uid;
     if (uid) {
@@ -86,6 +99,7 @@ export function useWakeData() {
 
     setProfile(updated);
     setRecords([]);
+    setFeedHues([]);
     setTodayRecorded(false);
   }, []);
 
@@ -108,5 +122,5 @@ export function useWakeData() {
     setProfile(updated);
   }, [profile]);
 
-  return { profile, records, loading, todayRecorded, recordWake, resetAverage, updateProfile, reload: load };
+  return { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
 }

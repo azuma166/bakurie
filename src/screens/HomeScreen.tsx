@@ -19,12 +19,9 @@ import { generateFragments } from '../utils/fragments';
 const ABSORB_COUNT = 6;
 
 export default function HomeScreen() {
-  const { profile, records, loading, todayRecorded, recordWake, resetAverage } = useWakeData();
+  const { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage } = useWakeData();
   const [absorbing, setAbsorbing] = useState(false);
   const absorbAnim = useRef(new Animated.Value(0)).current;
-
-  // 各かけらの hue を個別に記憶（index 0 = 最新）。既存のかけらの色は変わらない
-  const [feedHues, setFeedHues] = useState<number[]>([]);
   // 吸い込みパーティクルの色（今回のフィードの hue）
   const [feedHue, setFeedHue] = useState(200);
 
@@ -37,7 +34,7 @@ export default function HomeScreen() {
     if (absorbing || !profile) return;
 
     const newHue = Math.floor(Math.random() * 360);
-    setFeedHues(prev => [newHue, ...prev]); // 先頭に追加（index 0 = 最新）
+    addFeedHue(newHue); // フックで永続化・全画面に配布
     setFeedHue(newHue);
     setAbsorbing(true);
 
@@ -50,7 +47,7 @@ export default function HomeScreen() {
       await recordWake();
       setAbsorbing(false);
     });
-  }, [absorbing, profile, recordWake, absorbAnim]);
+  }, [absorbing, profile, addFeedHue, recordWake, absorbAnim]);
 
   const handleReset = useCallback(() => {
     if (Platform.OS === 'web') {

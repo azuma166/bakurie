@@ -14,16 +14,60 @@ import { auth } from '../config/firebase';
 import { minutesToTime } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
-function BakuCard({ user }: { user: FirestoreUser }) {
-  const fragments = React.useMemo(
-    () => generateFragments(Math.min(user.recordCount, 20)),
-    [user.recordCount]
-  );
+// ---------- color helpers ----------
+
+/** uid（文字列）から数値シードへ変換 */
+function uidToSeed(uid: string): number {
+  return uid.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) % 360, 0);
+}
+
+/** ユーザーの uid + recordCount から固有のかけら hues を導出（決定論的） */
+function deriveUserHues(uid: string, recordCount: number): number[] {
+  const seed = uidToSeed(uid);
+  const count = Math.min(recordCount, 8);
+  return Array.from({ length: count }, (_, i) => (seed + i * 47) % 360);
+}
+
+/** ダイヤモンドドット（各ユーザーのかけら色パレット） */
+function FragmentDots({ hues, max = 5 }: { hues: number[]; max?: number }) {
+  if (hues.length === 0) return null;
   return (
-    <View style={[styles.card, user.hasWokenToday && styles.cardWoken]}>
+    <View style={dotStyles.row}>
+      {hues.slice(0, max).map((hue, i) => (
+        <View
+          key={i}
+          style={[dotStyles.dot, { backgroundColor: `hsl(${hue}, 55%, 68%)` }]}
+        />
+      ))}
+    </View>
+  );
+}
+const dotStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 4, justifyContent: 'center', marginTop: 5, flexWrap: 'wrap' },
+  dot: { width: 6, height: 6, transform: [{ rotate: '45deg' }] },
+});
+
+// -----------------------------------
+
+function BakuCard({ user }: { user: FirestoreUser }) {
+  const hues = deriveUserHues(user.uid, user.recordCount);
+
+  const fragments = React.useMemo(
+    () => generateFragments(Math.min(user.recordCount, 20), hues),
+    // hues is derived deterministically from uid+recordCount, safe to ignore exhaustive deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user.recordCount, user.uid]
+  );
+
+  // Primary accent from the first derived hue
+  const borderColor = hues.length > 0 ? `hsl(${hues[0]}, 40%, 82%)` : '#E8E5E0';
+
+  return (
+    <View style={[styles.card, { borderColor }, user.hasWokenToday && styles.cardWoken]}>
       <View style={styles.bakuThumb}>
         <BakuCanvas bakuType={user.bakuType} size={64} fragments={fragments} />
       </View>
+      <FragmentDots hues={hues} max={5} />
       <Text style={[styles.cardName, user.hasWokenToday && styles.cardNameWoken]}>
         {user.name}
       </Text>

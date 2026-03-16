@@ -21,9 +21,50 @@ import { deleteDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
+import { generateFragments } from '../utils/fragments';
+
+// ---------- color palette helpers ----------
+
+/** 蓄積されたかけら hues から最大 N 個のアクセント色を返す */
+function accentHsl(hue: number, s = 60, l = 60) {
+  return `hsl(${hue}, ${s}%, ${l}%)`;
+}
+
+/** feedHues が空のときのデフォルトカラー */
+const DEFAULT_ACCENT = '#6B9E78';
+
+/** n 個のバッジ色を生成（かけら色 or デフォルト灰色） */
+function badgeColors(feedHues: number[], n: number): string[] {
+  return Array.from({ length: n }, (_, i) =>
+    feedHues.length > 0
+      ? accentHsl(feedHues[i % feedHues.length], 50, 75)
+      : '#E8E5E0'
+  );
+}
+
+/** かけらのカラーパレットをダイヤモンドドットで表示 */
+function FragmentDots({ hues, max = 8 }: { hues: number[]; max?: number }) {
+  if (hues.length === 0) return null;
+  return (
+    <View style={dotStyles.row}>
+      {hues.slice(0, max).map((hue, i) => (
+        <View
+          key={i}
+          style={[dotStyles.dot, { backgroundColor: accentHsl(hue, 60, 65) }]}
+        />
+      ))}
+    </View>
+  );
+}
+const dotStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 6, flexWrap: 'wrap' },
+  dot: { width: 8, height: 8, transform: [{ rotate: '45deg' }] },
+});
+
+// -------------------------------------------
 
 export default function ProfileScreen() {
-  const { profile, records, loading, resetAverage, updateProfile } = useWakeData();
+  const { profile, records, loading, feedHues, resetAverage, updateProfile } = useWakeData();
   const [relation, setRelation] = useState<FollowRelation>({ followingIds: [] });
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -77,7 +118,6 @@ export default function ProfileScreen() {
     }
   }, [resetAverage]);
 
-
   const handleClearAll = useCallback(() => {
     const confirmMessage = 'アカウントが完全に削除されます。記録・プロフィール・認証情報がすべて消えます。同じメールアドレスで再度新規登録できます。この操作は取り消せません。';
 
@@ -121,6 +161,12 @@ export default function ProfileScreen() {
     );
   }
 
+  // かけら色から導出するアクセントカラー
+  const primaryAccent = feedHues.length > 0 ? accentHsl(feedHues[0], 55, 52) : DEFAULT_ACCENT;
+  const stepBadgeColors = badgeColors(feedHues, 5);
+
+  const fragments = generateFragments(Math.min(records.length, 20), feedHues);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -128,7 +174,7 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>プロフィール</Text>
           <TouchableOpacity onPress={() => editing ? handleSave() : setEditing(true)}>
-            <Text style={styles.editBtn}>{editing ? '保存' : '編集'}</Text>
+            <Text style={[styles.editBtn, { color: primaryAccent }]}>{editing ? '保存' : '編集'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -138,16 +184,22 @@ export default function ProfileScreen() {
             {profile.avatarUri ? (
               <Image source={{ uri: profile.avatarUri }} style={styles.avatar} />
             ) : (
-              <View style={styles.avatarPlaceholder}>
+              <View style={[styles.avatarPlaceholder, feedHues.length > 0 && {
+                borderWidth: 2,
+                borderColor: accentHsl(feedHues[0], 45, 75),
+              }]}>
                 <Text style={styles.avatarPlaceholderText}>
                   {editing ? '📷' : profile.name.charAt(0)}
                 </Text>
               </View>
             )}
-            {editing && <Text style={styles.avatarHint}>変更</Text>}
+            {editing && <Text style={[styles.avatarHint, { color: primaryAccent }]}>変更</Text>}
           </TouchableOpacity>
 
-          <BakuCanvas bakuType={profile.bakuType} size={120} />
+          <View style={styles.bakuWithDots}>
+            <BakuCanvas bakuType={profile.bakuType} size={120} fragments={fragments} />
+            <FragmentDots hues={feedHues} max={8} />
+          </View>
         </View>
 
         {/* Name / Bio */}
@@ -181,7 +233,7 @@ export default function ProfileScreen() {
         {/* Follow stats */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statNum}>{relation.followingIds.length}</Text>
+            <Text style={[styles.statNum, { color: primaryAccent }]}>{relation.followingIds.length}</Text>
             <Text style={styles.statLabel}>フォロー中</Text>
           </View>
         </View>
@@ -189,11 +241,11 @@ export default function ProfileScreen() {
         {/* Wake stats */}
         <View style={styles.wakeStats}>
           <View style={styles.wakeStatItem}>
-            <Text style={styles.wakeStatNum}>{records.length}</Text>
+            <Text style={[styles.wakeStatNum, { color: primaryAccent }]}>{records.length}</Text>
             <Text style={styles.wakeStatLabel}>累計記録日数</Text>
           </View>
           <View style={styles.wakeStatItem}>
-            <Text style={styles.wakeStatNum}>{minutesToTime(profile.emaMinutes)}</Text>
+            <Text style={[styles.wakeStatNum, { color: primaryAccent }]}>{minutesToTime(profile.emaMinutes)}</Text>
             <Text style={styles.wakeStatLabel}>平均起床時刻</Text>
           </View>
         </View>
@@ -210,9 +262,9 @@ export default function ProfileScreen() {
             { step: '3', text: '毎日続けると平均起床時刻（EMA）が更新される' },
             { step: '4', text: '夢広場でフォロー中のバクたちの状況を確認する' },
             { step: '5', text: '平均をリセットすると新しいバクが現れる' },
-          ].map(({ step, text }) => (
+          ].map(({ step, text }, i) => (
             <View key={step} style={styles.guideRow}>
-              <View style={styles.guideStepBadge}>
+              <View style={[styles.guideStepBadge, { backgroundColor: stepBadgeColors[i] }]}>
                 <Text style={styles.guideStepText}>{step}</Text>
               </View>
               <Text style={styles.guideText}>{text}</Text>
@@ -295,8 +347,10 @@ const styles = StyleSheet.create({
   avatarHint: {
     textAlign: 'center',
     fontSize: 10,
-    color: '#6B9E78',
     marginTop: 4,
+  },
+  bakuWithDots: {
+    alignItems: 'center',
   },
   editSection: {
     paddingHorizontal: 20,
@@ -336,7 +390,6 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 0,
     marginBottom: 16,
     marginHorizontal: 20,
     backgroundColor: '#FDFCF9',
@@ -348,11 +401,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 12,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#E8E5E0',
-    marginVertical: 10,
   },
   statNum: {
     fontSize: 20,

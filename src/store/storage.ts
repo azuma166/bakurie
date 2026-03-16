@@ -7,6 +7,7 @@ const KEYS = {
   USER_PROFILE: 'user_profile',
   FOLLOW_RELATION: 'follow_relation',
   MOCK_USERS: 'mock_users',
+  FEED_HUES: 'feed_hues',
 };
 
 // --- Wake Records ---
@@ -81,7 +82,19 @@ export async function resetEMA(newBakuType?: number): Promise<UserProfile> {
   }
   await saveUserProfile(profile);
   await clearWakeRecords();
+  await AsyncStorage.setItem(KEYS.FEED_HUES, JSON.stringify([]));
   return profile;
+}
+
+// --- Feed Hues (dream fragment colors) ---
+
+export async function getFeedHues(): Promise<number[]> {
+  const raw = await AsyncStorage.getItem(KEYS.FEED_HUES);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export async function saveFeedHues(hues: number[]): Promise<void> {
+  await AsyncStorage.setItem(KEYS.FEED_HUES, JSON.stringify(hues));
 }
 
 // --- Follow Relations ---

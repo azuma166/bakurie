@@ -1,13 +1,23 @@
 import React from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import TabNavigator from './src/navigation/TabNavigator';
+import { View, Text, StyleSheet } from 'react-native';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" backgroundColor="#F7F4EF" />
-      <TabNavigator />
-    </SafeAreaProvider>
+    <View style={styles.container}>
+      <Text style={styles.text}>Bakurie</Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F7F4EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: {
+    fontSize: 24,
+    color: '#2A2A2A',
+  },
+});

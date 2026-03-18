@@ -82,7 +82,7 @@ export function useWakeData() {
   // Add a new hue to the front of the list (newest first). Max 20 entries.
   const addFeedHue = useCallback((hue: number) => {
     setFeedHues(prev => {
-      const newHues = [hue, ...prev].slice(0, 20);
+      const newHues = [hue, ...prev].slice(0, 100);
       saveFeedHues(newHues); // persist async, fire and forget
       const uid = auth.currentUser?.uid;
       if (uid) updateFirestoreUser(uid, { feedHues: newHues }); // sync to Firestore

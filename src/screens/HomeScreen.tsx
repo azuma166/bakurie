@@ -26,8 +26,8 @@ export default function HomeScreen() {
   const [feedHue, setFeedHue] = useState(200);
 
   const fragments = useMemo(
-    () => generateFragments(feedHues.length, feedHues),
-    [feedHues]
+    () => generateFragments(Math.min(recordCount, 100), feedHues),
+    [recordCount, feedHues]
   );
 
   const handleFeed = useCallback(async () => {

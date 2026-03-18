@@ -38,11 +38,14 @@ export function generateFragments(recordCount: number, hues: number[] = []): Dre
     const x = 8 + Math.cos(angle) * radius;
     const y = 5 + Math.sin(angle) * radius;
 
-    // Visual attributes: decay with age
-    const saturation = 72 - ageRatio * 38;        // vivid → muted
-    const lightness  = 58 + ageRatio * 12;        // 58 → 70
-    const size    = 12 - ageRatio * 9 + fragHash(hue, 2) * 2;  // newest ~12–14, oldest ~3–5
-    const opacity = 0.78 - ageRatio * 0.57 + fragHash(hue, 3) * 0.04;
+    // Ease-in curve: decay accelerates as fragments age (natural fading feel)
+    const t = ageRatio * ageRatio; // 0 (newest) → 1 (oldest), eased
+
+    // Visual attributes: all three decay together with age
+    const size       = 14 - t * 11 + fragHash(hue, 2) * 1.5; // newest ~14–15, oldest ~3–4 px
+    const opacity    = 0.92 - t * 0.78;                       // newest 0.92, oldest 0.14
+    const saturation = 88 - t * 68;                           // newest 88%, oldest 20%
+    const lightness  = 56 + t * 10;                           // newest 56%, oldest 66% (muted)
 
     fragments.push({
       id: `frag-${i}`,

@@ -2,29 +2,21 @@ import { DreamFragment } from '../components/BakuCanvas';
 
 /**
  * Deterministic pseudo-random in [0,1) based on integer seed.
+ * Avoids Math.random() so positions are stable across re-renders.
  */
 function pr(seed: number, offset = 0): number {
-  const x = Math.sin(seed * 127.1 + offset * 311.7) * 43758.5453;
+  // Use seed+1 to avoid sin(0)=0 degenerate case when seed=0
+  const x = Math.sin((seed + 1) * 127.1 + (offset + 1) * 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
 
-// Body centroid offset from the SVG transform origin (translate(cx,cy)).
-// BODY = [[10,-40],[65,5],[12,48],[-55,8]] → centroid ≈ (+8, +5)
-const BODY_CX = 8;
-const BODY_CY = 5;
-
-// Ring spacing for the sunflower phyllotaxis pattern.
-// sqrt(i+0.5) * SPREAD gives natural non-overlapping distribution.
-// SPREAD=11: i=0 → r≈7.8, i=4 → r≈22.9, i=19 → r≈46.8 (body edge)
-const SPREAD = 11;
-
 /**
- * Generate dream fragments distributed inside baku body using
- * sunflower phyllotaxis (golden angle + sqrt-radius).
+ * Generate dream fragments distributed inside baku body.
+ * - Index 0 = newest: large, bright, inner ring
+ * - Index N-1 = oldest: small, faint, outer ring
  *
- * Index 0 = newest → large, bright, center.
- * Index N-1 = oldest → small, faint, edge.
- * hues[i] is the per-fragment hue (index 0 = newest).
+ * Body polygon centroid is roughly (+8, +5) from the SVG transform origin.
+ * Inner ring radius ~15px, outer ring ~42px — clearly distinct for any count.
  */
 export function generateFragments(recordCount: number, hues: number[] = []): DreamFragment[] {
   if (recordCount === 0) return [];
@@ -34,11 +26,16 @@ export function generateFragments(recordCount: number, hues: number[] = []): Dre
   for (let i = 0; i < recordCount; i++) {
     const ageRatio = recordCount === 1 ? 0 : i / (recordCount - 1); // 0=newest, 1=oldest
 
-    // Sunflower phyllotaxis: sqrt spacing + golden angle
+    // Golden angle gives maximum angular separation between adjacent fragments
     const angle = (i * 137.5 * Math.PI) / 180;
-    const radius = Math.sqrt(i + 0.5) * SPREAD + pr(i, 0) * 4;
-    const x = BODY_CX + Math.cos(angle) * radius;
-    const y = BODY_CY + Math.sin(angle) * radius;
+
+    // Radius: newest near center, oldest at body edge — with small per-fragment jitter
+    const baseRadius = 15 + ageRatio * 27; // newest→15, oldest→42
+    const radius = baseRadius + pr(i, 0) * 6 - 3; // ±3px organic jitter
+
+    // Body centroid offset: BODY centroid ≈ (+8, +5) from transform origin
+    const x = 8 + Math.cos(angle) * radius;
+    const y = 5 + Math.sin(angle) * radius;
 
     // Hue: stored value or golden-angle fallback
     const hue = hues[i] ?? (i * 47 + 200) % 360;
@@ -50,10 +47,10 @@ export function generateFragments(recordCount: number, hues: number[] = []): Dre
     const lightness = 58 + ageRatio * 12; // 58 → 70
 
     // Size: newest large, oldest tiny
-    const size = 13 * (1 - ageRatio * 0.82) + pr(i, 2) * 2; // newest ~13-15, oldest ~2-4
+    const size = 12 - ageRatio * 9 + pr(i, 2) * 2; // newest ~12-14, oldest ~3-5
 
     // Opacity: newest solid, oldest faint
-    const opacity = 0.78 - ageRatio * 0.58 + pr(i, 3) * 0.04;
+    const opacity = 0.78 - ageRatio * 0.57 + pr(i, 3) * 0.04;
 
     fragments.push({
       id: `frag-${i}`,

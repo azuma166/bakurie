@@ -170,7 +170,7 @@ export default function ProfileScreen() {
   const primaryAccent = feedHues.length > 0 ? accentHsl(feedHues[0], 55, 52) : DEFAULT_ACCENT;
   const stepBadgeColors = badgeColors(feedHues, 5);
 
-  const fragments = generateFragments(Math.min(recordCount, 100), feedHues);
+  const fragments = generateFragments(feedHues.length, feedHues);
 
   return (
     <SafeAreaView style={styles.container}>

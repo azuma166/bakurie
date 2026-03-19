@@ -39,9 +39,9 @@ function BakuCard({ user }: { user: FirestoreUser }) {
   const hues = user.feedHues ?? [];
 
   const fragments = React.useMemo(
-    () => generateFragments(Math.min(user.recordCount, 100), hues),
+    () => generateFragments(hues.length, hues),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user.recordCount, user.uid, user.feedHues]
+    [user.uid, user.feedHues]
   );
 
   const borderColor = hues.length > 0 ? `hsl(${hues[0]}, 40%, 82%)` : '#E8E5E0';

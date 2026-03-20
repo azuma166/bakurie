@@ -11,7 +11,7 @@ import {
 import BakuCanvas from '../components/BakuCanvas';
 import { getAllUsers, getFirestoreUser, FirestoreUser } from '../services/firestoreUser';
 import { auth } from '../config/firebase';
-import { minutesToTime } from '../utils/ema';
+import { minutesToTime, formatDate } from '../utils/ema';
 import { generateFragments } from '../utils/fragments';
 
 /** ダイヤモンドドット（各ユーザーのかけら色パレット） */
@@ -39,9 +39,9 @@ function BakuCard({ user }: { user: FirestoreUser }) {
   const hues = user.feedHues ?? [];
 
   const fragments = React.useMemo(
-    () => generateFragments(Math.min(user.recordCount, 20), hues),
+    () => generateFragments(hues.length, hues),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user.recordCount, user.uid, user.feedHues]
+    [user.uid, user.feedHues]
   );
 
   const borderColor = hues.length > 0 ? `hsl(${hues[0]}, 40%, 82%)` : '#E8E5E0';
@@ -79,7 +79,6 @@ export default function PlazaScreen() {
       ]);
       const followingIds = new Set(me?.followingIds ?? []);
       const users = allUsers.filter(u => followingIds.has(u.uid));
-      users.sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
       setFollowingUsers(users);
     } catch (e: any) {
       setError(e?.message ?? '読み込みに失敗しました');
@@ -109,8 +108,12 @@ export default function PlazaScreen() {
     );
   }
 
-  const awake = followingUsers.filter(u => !u.hasWokenToday);
-  const slept = followingUsers.filter(u => u.hasWokenToday);
+  const today = formatDate(new Date());
+  const displayUsers = followingUsers
+    .map(u => ({ ...u, hasWokenToday: u.hasWokenToday && u.lastWakeDate === today }))
+    .sort((a, b) => Number(a.hasWokenToday) - Number(b.hasWokenToday));
+  const awake = displayUsers.filter(u => !u.hasWokenToday);
+  const slept = displayUsers.filter(u => u.hasWokenToday);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -126,7 +129,7 @@ export default function PlazaScreen() {
         </View>
       ) : (
         <FlatList
-          data={followingUsers}
+          data={displayUsers}
           keyExtractor={u => u.uid}
           numColumns={2}
           contentContainerStyle={styles.grid}

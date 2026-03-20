@@ -51,7 +51,7 @@ function UserRow({
 }) {
   const hues = user.feedHues ?? [];
   const fragments = React.useMemo(
-    () => generateFragments(Math.min(user.recordCount, 20), hues),
+    () => generateFragments(Math.min(user.recordCount, 100), hues),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user.recordCount, user.uid, user.feedHues]
   );

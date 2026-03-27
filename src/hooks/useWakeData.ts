@@ -12,36 +12,68 @@ import {
 import { UserProfile, WakeRecord } from '../types';
 import { timeToMinutes, formatDate } from '../utils/ema';
 import { auth } from '../config/firebase';
-import { updateFirestoreUser, getFirestoreUser } from '../services/firestoreUser';
+import { updateFirestoreUser, getFirestoreUser, createUserInFirestore } from '../services/firestoreUser';
 
 export function useWakeData() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [records, setRecords] = useState<WakeRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [todayRecorded, setTodayRecorded] = useState(false);
   const [feedHues, setFeedHues] = useState<number[]>([]);
+  const [firestoreWokenToday, setFirestoreWokenToday] = useState(false);
+  const [recordCount, setRecordCount] = useState(0);
 
   const load = useCallback(async () => {
     const uid = auth.currentUser?.uid;
-    const [p, r, hues] = await Promise.all([getUserProfile(), getWakeRecords(), getFeedHues()]);
+    const [p, r, localHues] = await Promise.all([getUserProfile(), getWakeRecords(), getFeedHues()]);
 
-    // Sync bakuType and emaMinutes from Firestore if available
+    // Sync fields from Firestore (source of truth)
+    let resolvedHues = localHues;
     if (uid) {
-      const fp = await getFirestoreUser(uid);
+      let fp = await getFirestoreUser(uid);
+
+      if (!fp) {
+        // 認証済みユーザーのFirestoreドキュメントが存在しない場合（コンソールからの削除や
+        // 部分的な削除失敗など）は、ローカルデータを使わず新規ドキュメントを作成して
+        // クリーンな状態に戻す
+        await createUserInFirestore(uid, { name: p.name });
+        await saveFeedHues([]);
+        resolvedHues = [];
+        fp = await getFirestoreUser(uid);
+      }
+
       if (fp) {
         p.bakuType = fp.bakuType;
         p.emaMinutes = fp.emaMinutes;
         p.name = fp.name;
         p.bio = fp.bio;
+
+        // Sync feedHues from Firestore so self-view matches what others see
+        if (fp.feedHues) {
+          resolvedHues = fp.feedHues;
+          await saveFeedHues(fp.feedHues);
+        }
+
+        // Reset hasWokenToday in Firestore if it's a new day
+        const today = formatDate(new Date());
+        if (fp.hasWokenToday && fp.lastWakeDate !== today) {
+          await updateFirestoreUser(uid, { hasWokenToday: false });
+          setFirestoreWokenToday(false);
+        } else {
+          setFirestoreWokenToday(fp.hasWokenToday && fp.lastWakeDate === today);
+        }
+
+        // Firestore recordCount is authoritative (local records are cleared on logout)
+        setRecordCount(Math.max(r.length, fp.recordCount ?? 0));
+
         await saveUserProfile(p);
       }
+    } else {
+      setRecordCount(r.length);
     }
 
     setProfile(p);
     setRecords(r);
-    setFeedHues(hues);
-    const today = formatDate(new Date());
-    setTodayRecorded(r.some(rec => rec.date === today));
+    setFeedHues(resolvedHues);
     setLoading(false);
   }, []);
 
@@ -50,7 +82,7 @@ export function useWakeData() {
   // Add a new hue to the front of the list (newest first). Max 20 entries.
   const addFeedHue = useCallback((hue: number) => {
     setFeedHues(prev => {
-      const newHues = [hue, ...prev].slice(0, 20);
+      const newHues = [hue, ...prev].slice(0, 100);
       saveFeedHues(newHues); // persist async, fire and forget
       const uid = auth.currentUser?.uid;
       if (uid) updateFirestoreUser(uid, { feedHues: newHues }); // sync to Firestore
@@ -81,7 +113,8 @@ export function useWakeData() {
 
     setProfile(updated);
     setRecords(prev => [record, ...prev]);
-    setTodayRecorded(true);
+    setRecordCount(prev => prev + 1);
+    setFirestoreWokenToday(true);
     return record;
   }, [profile]);
 
@@ -103,7 +136,8 @@ export function useWakeData() {
     setProfile(updated);
     setRecords([]);
     setFeedHues([]);
-    setTodayRecorded(false);
+    setRecordCount(0);
+    setFirestoreWokenToday(false);
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
@@ -125,5 +159,7 @@ export function useWakeData() {
     setProfile(updated);
   }, [profile]);
 
-  return { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
+  const todayRecorded = firestoreWokenToday || records.some(rec => rec.date === formatDate(new Date()));
+
+  return { profile, records, recordCount, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage, updateProfile, reload: load };
 }

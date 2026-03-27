@@ -5,13 +5,20 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './src/config/firebase';
 import TabNavigator from './src/navigation/TabNavigator';
 import AuthScreen from './src/screens/AuthScreen';
+import { clearAllData } from './src/store/storage';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    let prevUid: string | undefined;
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      // ユーザーが切り替わった（別ユーザーへの切替 or ログアウト）場合にローカルデータをクリア
+      if (prevUid !== undefined && prevUid !== u?.uid) {
+        await clearAllData();
+      }
+      prevUid = u?.uid;
       setUser(u);
       setInitializing(false);
     });

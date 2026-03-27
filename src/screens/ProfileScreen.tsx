@@ -15,9 +15,9 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import BakuCanvas from '../components/BakuCanvas';
 import { useWakeData } from '../hooks/useWakeData';
-import { getFollowRelation, clearAllData } from '../store/storage';
+import { clearAllData } from '../store/storage';
 import { signOut, deleteUser } from 'firebase/auth';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { FollowRelation } from '../types';
 import { minutesToTime } from '../utils/ema';
@@ -64,18 +64,22 @@ const dotStyles = StyleSheet.create({
 // -------------------------------------------
 
 export default function ProfileScreen() {
-  const { profile, records, loading, feedHues, resetAverage, updateProfile } = useWakeData();
+  const { profile, recordCount, loading, feedHues, resetAverage, updateProfile } = useWakeData();
   const [relation, setRelation] = useState<FollowRelation>({ followingIds: [] });
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
 
-  const loadRelation = useCallback(async () => {
-    const rel = await getFollowRelation();
-    setRelation(rel);
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
+      if (snap.exists()) {
+        setRelation({ followingIds: snap.data().followingIds ?? [] });
+      }
+    });
+    return unsub;
   }, []);
-
-  useEffect(() => { loadRelation(); }, [loadRelation]);
 
   useEffect(() => {
     if (profile) {
@@ -125,9 +129,10 @@ export default function ProfileScreen() {
       const user = auth.currentUser;
       if (!user) return;
       try {
+        // deleteUser を先に実行し、失敗した場合はデータを変更しない
+        await deleteUser(user);
         await deleteDoc(doc(db, 'users', user.uid));
         await clearAllData();
-        await deleteUser(user);
       } catch (e: any) {
         if (e?.code === 'auth/requires-recent-login') {
           Alert.alert('再認証が必要です', '一度ログアウトして再ログインしてから、もう一度お試しください。');
@@ -165,7 +170,7 @@ export default function ProfileScreen() {
   const primaryAccent = feedHues.length > 0 ? accentHsl(feedHues[0], 55, 52) : DEFAULT_ACCENT;
   const stepBadgeColors = badgeColors(feedHues, 5);
 
-  const fragments = generateFragments(Math.min(records.length, 20), feedHues);
+  const fragments = generateFragments(feedHues.length, feedHues);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -241,7 +246,7 @@ export default function ProfileScreen() {
         {/* Wake stats */}
         <View style={styles.wakeStats}>
           <View style={styles.wakeStatItem}>
-            <Text style={[styles.wakeStatNum, { color: primaryAccent }]}>{records.length}</Text>
+            <Text style={[styles.wakeStatNum, { color: primaryAccent }]}>{recordCount}</Text>
             <Text style={styles.wakeStatLabel}>累計記録日数</Text>
           </View>
           <View style={styles.wakeStatItem}>

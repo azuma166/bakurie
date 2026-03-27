@@ -5,6 +5,8 @@ import {
   updateDoc,
   collection,
   getDocs,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -58,18 +60,9 @@ export async function getAllUsers(): Promise<FirestoreUser[]> {
 }
 
 export async function followUserFirestore(myUid: string, targetUid: string): Promise<void> {
-  const me = await getFirestoreUser(myUid);
-  if (!me) return;
-  const ids = me.followingIds.includes(targetUid)
-    ? me.followingIds
-    : [...me.followingIds, targetUid];
-  await updateFirestoreUser(myUid, { followingIds: ids });
+  await updateDoc(doc(db, USERS, myUid), { followingIds: arrayUnion(targetUid) });
 }
 
 export async function unfollowUserFirestore(myUid: string, targetUid: string): Promise<void> {
-  const me = await getFirestoreUser(myUid);
-  if (!me) return;
-  await updateFirestoreUser(myUid, {
-    followingIds: me.followingIds.filter(id => id !== targetUid),
-  });
+  await updateDoc(doc(db, USERS, myUid), { followingIds: arrayRemove(targetUid) });
 }

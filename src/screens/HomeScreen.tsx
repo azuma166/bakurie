@@ -19,15 +19,15 @@ import { generateFragments } from '../utils/fragments';
 const ABSORB_COUNT = 6;
 
 export default function HomeScreen() {
-  const { profile, records, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage } = useWakeData();
+  const { profile, records, recordCount, loading, todayRecorded, feedHues, addFeedHue, recordWake, resetAverage } = useWakeData();
   const [absorbing, setAbsorbing] = useState(false);
   const absorbAnim = useRef(new Animated.Value(0)).current;
   // 吸い込みパーティクルの色（今回のフィードの hue）
   const [feedHue, setFeedHue] = useState(200);
 
   const fragments = useMemo(
-    () => generateFragments(Math.min(records.length, 20), feedHues),
-    [records.length, feedHues]
+    () => generateFragments(feedHues.length, feedHues),
+    [feedHues]
   );
 
   const handleFeed = useCallback(async () => {
@@ -185,7 +185,7 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       {/* Record count */}
-      <Text style={styles.countText}>累計 {records.length} 日</Text>
+      <Text style={styles.countText}>累計 {recordCount} 日</Text>
     </SafeAreaView>
   );
 }

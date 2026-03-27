@@ -1,11 +1,25 @@
 import { DreamFragment } from '../components/BakuCanvas';
 
 /**
+ * GLSL-style hash: produces a stable pseudo-random in [0,1) for any float seed.
+ * Using hue as seed means each fragment has a unique, stable position.
+ */
+function fragHash(seed: number, slot: number): number {
+  const x = Math.sin(seed * 12.9898 + slot * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
  * Generate dream fragments distributed inside baku body.
- * Recent records → larger, brighter, more centered.
- * Old records → smaller, faded, towards edges.
- * hues[i] is the per-fragment hue (index 0 = newest). Existing fragments
- * always keep their original color across subsequent feeds.
+ *
+ * Position is seeded by each fragment's hue value (random per feed),
+ * so different feeds always produce visually distinct positions.
+ * Old fragments never move — their hue (and thus position) is fixed.
+ *
+ * Body polygon centroid ≈ (+8, +5) from SVG transform origin.
+ * Radius range 15–40px keeps fragments inside the body.
+ *
+ * Index 0 = newest (large, bright), index N-1 = oldest (small, faint).
  */
 export function generateFragments(recordCount: number, hues: number[] = []): DreamFragment[] {
   if (recordCount === 0) return [];
@@ -13,21 +27,25 @@ export function generateFragments(recordCount: number, hues: number[] = []): Dre
   const fragments: DreamFragment[] = [];
 
   for (let i = 0; i < recordCount; i++) {
-    const ageRatio = i / Math.max(recordCount - 1, 1); // 0 = newest, 1 = oldest
-    const isNew = ageRatio < 0.2;
+    const ageRatio = recordCount === 1 ? 0 : i / (recordCount - 1); // 0=newest, 1=oldest
 
-    // Position inside body (-30 to 30 range roughly)
-    const angle = (i * 137.5 * Math.PI) / 180; // golden angle spread
-    const radius = isNew ? 8 + Math.random() * 10 : 12 + ageRatio * 20;
-    const x = Math.cos(angle) * radius * (0.5 + Math.random() * 0.5);
-    const y = Math.sin(angle) * radius * (0.5 + Math.random() * 0.5);
-
-    // Each fragment keeps its own hue; fallback to golden-angle spread
+    // Each fragment's hue is unique (random per feed), so positions are unique and stable.
     const hue = hues[i] ?? (i * 47 + 200) % 360;
-    const saturation = isNew ? 70 : 40 - ageRatio * 20;
-    const lightness = 60 + ageRatio * 10;
-    const size = isNew ? 8 + Math.random() * 8 : 3 + (1 - ageRatio) * 3;
-    const opacity = isNew ? 0.65 + Math.random() * 0.1 : 0.2 + (1 - ageRatio) * 0.1;
+
+    // Position: seeded entirely by hue → differs for every feed, never changes after
+    const angle = fragHash(hue, 0) * 2 * Math.PI;
+    const radius = 15 + fragHash(hue, 1) * 25; // 15–40 px inside body
+    const x = 8 + Math.cos(angle) * radius;
+    const y = 5 + Math.sin(angle) * radius;
+
+    // Ease-in curve: decay accelerates as fragments age (natural fading feel)
+    const t = ageRatio * ageRatio; // 0 (newest) → 1 (oldest), eased
+
+    // Visual attributes: all three decay together with age
+    const size       = 14 - t * 11 + fragHash(hue, 2) * 1.5; // newest ~14–15, oldest ~3–4 px
+    const opacity    = 0.92 - t * 0.78;                       // newest 0.92, oldest 0.14
+    const saturation = 88 - t * 68;                           // newest 88%, oldest 20%
+    const lightness  = 56 + t * 10;                           // newest 56%, oldest 66% (muted)
 
     fragments.push({
       id: `frag-${i}`,
@@ -38,7 +56,7 @@ export function generateFragments(recordCount: number, hues: number[] = []): Dre
       opacity,
       x,
       y,
-      phase: Math.random() * Math.PI * 2,
+      phase: fragHash(hue, 4) * Math.PI * 2,
     });
   }
 
